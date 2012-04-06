@@ -510,7 +510,7 @@ function MediaView(media) {
 		var place = media.location.latitude + ', ' + media.location.longitude;
 		var placeName = place;
 		if (media.location.name) placeName = media.location.name;
-		view.geo.html('<a href="http://maps.google.com/?q=' + encodeURIComponent(location) + '">' + placeName + '</a>');
+		view.geo.html('<a href="http://maps.google.com/?q=' + encodeURIComponent(place) + '">' + placeName + '</a>');
 	} else {
 		view.geoContainer.hide();
 	}
