@@ -5,7 +5,8 @@
 var hash = location.hash + '';
 var m = hash.match(/access_token=([^&]+)/);
 if (m) {
-	localStorage.instagramAccessToken = m[1];
+	localStorage.removeItem('instagramAccessToken');
+	localStorage.setItem('instagramAccessToken', m[1]);
 	location.replace('.');
 } else {
 	alert('Cannot get access token! :(');

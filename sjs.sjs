@@ -321,7 +321,7 @@ function Feed() {
 			var list = that.loader.refresh();
 			var addition = getNewMedia(list);
 			if (addition.length > 0) {
-				that.prepend.append(that.prepend, addition);
+				that.prepend.apply(that.prepend, addition);
 			}
 		} finally {
 			that.emit('finishRefreshing');
