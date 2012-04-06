@@ -1,0 +1,180 @@
+body {
+	background: #353433;
+	color: #e9e8e7;
+	font: 15px Verdana, sans-serif;
+}
+html {
+	overflow-x: hidden;
+	overflow-y: scroll;
+}
+
+.template {
+	display: none;
+}
+
+h1 {
+	font: bold 32px/32px Helvetica, Free Sans, FreeSans, Arial, sans-serif;
+	color: #8b8685;
+	margin: 64px 0 0; padding: 0;
+}
+
+#main {
+	margin: 0 auto;
+	width: 612px;
+}
+#main-wrapper {
+	margin: 0 160px;
+}
+.picture {
+	position: relative;
+	margin-bottom: 16px;
+	min-height: 306px;
+}
+.left {
+	position: absolute;
+	top: 0px; left: -192px; width: 192px;
+	margin-left: -16px;
+	text-align: right;
+}
+.middle {
+	position: absolute;
+	top: 0; left: 0;
+	z-index: 2;
+}
+.right {
+	position: relative;
+	margin-left: 322px;
+	padding-top: 0;
+	padding-bottom: 0;
+}
+.image {
+	background: #090807;
+	position: relative;
+}
+.image img {
+	position: absolute;
+	top: 0; left: 0;
+}
+.image {
+	width: 306px;
+	height: 306px;
+}
+.image img {
+	width: 100%;
+	height: 100%;
+}
+.left .user, .comment .user {
+	font-weight: bold;
+}
+.username {
+	color: #bef;
+}
+.when {
+	color: #8b8685;
+	font-size: 0.8em; margin-right: 32px;
+}
+.profile-picture, .profile-picture img {
+	width: 24px;
+	height: 24px;
+}
+.profile-picture {
+	background: #000;
+	border: 1px solid #666666;
+	display: inline-block;
+	vertical-align: middle;
+	margin-left: 6px;
+}
+.picture.zoomed {
+	min-height: 612px;
+}
+.picture.zoomed .image {
+	width: 612px; height: 612px;
+}
+.picture.zoomed .right {
+	padding-top: 628px;
+	padding-bottom: 16px;
+}
+
+.picture {
+	-moz-transition: 0.5s min-height;
+	-wekit-transition: 0.5s min-height;
+}
+.image {
+	-moz-transition: 0.5s width, 0.5s height;
+	-webkit-transition: 0.5s width, 0.5s height;
+}
+.right {
+	-moz-transition: 0.5s padding-top, 0.5s padding-bottom;
+	-webkit-transition: 0.5s padding-top, 0.5s padding-bottom;
+}
+
+.comment, .likes {
+	line-height: 1.5;
+	margin-bottom: 0.5ex;
+	word-wrap: break-word;
+}
+img.hide { opacity: 0; }
+img.show { opacity: 1; }
+img.dim { opacity: 0.6; }
+img.hide, img.show, img.dim {
+	-moz-transition: 0.5s opacity;
+	-webkit-transition: 0.5s opacity;
+}
+
+
+.info {
+	position: relative;
+	min-height: 36px;
+}
+.info .icon {
+	position: absolute;
+	z-index: 1;
+	top: 5px; left: 0; width: 16px; height: 16px;
+	cursor: pointer;
+}
+.info .icon span {
+	position: absolute;
+	top: 14px; left: -8px; width: 32px;
+	display: block;
+	font-size: 10px;
+	text-align: center;
+	color: #8b8685;
+}
+.info-data {
+	position: relative;
+	padding-left: 24px;
+}
+
+.feed {
+	position: relative;
+	padding-top: 32px;
+}
+.loading, .load-more {
+	text-align: center;
+	font-style: italic;
+	padding: 10px;
+}
+.load-more {
+	cursor: pointer;
+}
+.refresh-button {
+	display: inline-block;
+	width: 24px; height: 24px; vertical-align: middle;
+	cursor: pointer;
+}
+.refresh-button.dim,
+.icon.dim, .right.dim {
+	opacity: 0.3;
+}
+
+h2 {
+	font: bold 16px/32px Helvetica, sans-serif;
+	margin: 0; padding: 0;
+	position: absolute;
+	top: -32px; right: 0; height: 32px;
+	color: #8b8685;
+}
+
+.changeset {
+	position: relative;
+}

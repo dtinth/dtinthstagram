@@ -1,0 +1,14 @@
+<!DOCTYPE html><meta charset=utf-8><title>dtinthstagram</title>
+<link rel=stylesheet href=css.css>
+<body class="callback">
+<script>
+var hash = location.hash + '';
+var m = hash.match(/access_token=([^&]+)/);
+if (m) {
+	localStorage.instagramAccessToken = m[1];
+	location.replace('.');
+} else {
+	alert('Cannot get access token! :(');
+}
+</script>
+

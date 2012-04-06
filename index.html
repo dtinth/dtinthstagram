@@ -1,0 +1,87 @@
+<!DOCTYPE html><meta charset=utf-8><title>dtinthstagram</title>
+<link rel=stylesheet href=css.css>
+<body>
+<div id="main-wrapper">
+	<div id="main">
+		<h1 id="head">dtinthstagram</h1>
+	</div>
+</div>
+<div class="template" id="auth-needed">
+	<h1>Authentication Needed</h1>
+</div>
+<div class="template feed" id="feed">
+	<h2 data-role="head">
+		<span data-role="title">(feed title)</span>
+		<span data-role="refresh"
+			data-icon="M24.083,15.5c-0.009,4.739-3.844,8.574-8.583,8.583c-4.741-0.009-8.577-3.844-8.585-8.583c0.008-4.741,3.844-8.577,8.585-8.585c1.913,0,3.665,0.629,5.09,1.686l-1.782,1.783l8.429,2.256l-2.26-8.427l-1.89,1.89c-2.072-1.677-4.717-2.688-7.587-2.688C8.826,3.418,3.418,8.826,3.416,15.5C3.418,22.175,8.826,27.583,15.5,27.583S27.583,22.175,27.583,15.5H24.083z"
+			data-transform="t -15 -16 t 12 12 s 0.6 0.6"
+			class="refresh-button"></span>
+	</h2>
+	<div data-role="contents"></div>
+	<div data-role="footer">
+		<div data-role="loading" class="loading">loading...</div>
+		<div data-role="loadMore" class="load-more">load more</div>
+	</div>
+</div>
+<div class="template picture" id="picture">
+	<div class="left">
+		<span class="user" data-role="user">username</span
+		><span class="profile-picture" data-role="picture"></span
+		><div class="when" data-role="date">when</div>
+	</div>
+	<div class="middle">
+		<div class="image" data-role="image"></div>
+	</div
+	><div class="right" data-role="right">
+		<div data-role="likesContainer" class="info">
+			<div class="icon"
+				data-role="likeIcon"
+				data-icon="M24.132,7.971c-2.203-2.205-5.916-2.098-8.25,0.235L15.5,8.588l-0.382-0.382c-2.334-2.333-6.047-2.44-8.25-0.235c-2.204,2.203-2.098,5.916,0.235,8.249l8.396,8.396l8.396-8.396C26.229,13.887,26.336,10.174,24.132,7.971z"
+				data-transform="t -8,-8 s 0.7,0.7"><span data-role="likeCount"></span></div>
+			<div class="info-data likes" data-role="likes"></div>
+		</div>
+		<div data-role="rowsContainer" class="info">
+			<div class="icon"
+				data-icon="M16,5.333c-7.732,0-14,4.701-14,10.5c0,1.982,0.741,3.833,2.016,5.414L2,25.667l5.613-1.441c2.339,1.317,5.237,2.107,8.387,2.107c7.732,0,14-4.701,14-10.5C30,10.034,23.732,5.333,16,5.333z"
+				data-transform="t -9,-9 s -0.5,0.5"><span data-role="commentCount"></span></div>
+			<div class="info-data rows" data-role="rows"></div>
+		</div>
+	</div>
+</div>
+<div class="template comment" id="comment">
+	<span class="user" data-role="user">username</span>
+	<span data-role="text">text</span>
+	<span class="when" data-role="date">when</span>
+</div>
+<div class="template collection" id="collection">
+</div>
+<script src="lib/raphael.js"></script>
+<script src="lib/jquery-1.7.2.js"></script>
+<script src="lib/underscore.js"></script>
+<script src="apollo/oni-apollo.js"></script>
+<script>
+jQuery.fn.iconify = function(size) {
+	$(this).find('[data-icon]').each(function() {
+		var paper = Raphael(this, $(this).width(), $(this).height());
+		var path = paper.path($(this).attr('data-icon')).attr({
+			fill: '#8b8685', stroke: 'none'
+		}).transform($(this).attr('data-transform'));
+		$(this).data('icon', path);
+	});
+	return this;
+};
+jQuery.fn.tpl = function() {
+	var o = {
+		el: $(this).clone().removeClass('template').removeAttr('id')
+	};
+	o.el.find('[data-role]').each(function() {
+		var $this = $(this);
+		o[$this.attr('data-role')] = $this;
+	});
+	return o;
+};
+//$('#picture').tpl().el.appendTo('#main');
+</script>
+<script type="text/sjs">
+require('./sjs.sjs');
+</script>
