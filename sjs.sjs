@@ -42,7 +42,7 @@ function main() {
 		var feed = new HomeFeed();
 		new FeedView(feed).renderTo('#main');
 		feed.loadNext();
-		setTimeout(function() {
+		setInterval(function() {
 			feed.refresh();
 		}, 60000);
 	} catch (e) {
