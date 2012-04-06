@@ -108,7 +108,7 @@ h1 {
 	-webkit-transition: 0.5s padding-top, 0.5s padding-bottom;
 }
 
-.comment, .likes {
+.comment, .likes, .geo {
 	line-height: 1.5;
 	margin-bottom: 0.5ex;
 	word-wrap: break-word;
@@ -120,6 +120,10 @@ img.hide, img.show, img.dim {
 	-moz-transition: 0.5s opacity;
 	-webkit-transition: 0.5s opacity;
 }
+a {
+	color: #e9e8e7;
+	text-decoration: none;
+}
 
 
 .info {
@@ -129,7 +133,7 @@ img.hide, img.show, img.dim {
 .info .icon {
 	position: absolute;
 	z-index: 1;
-	top: 5px; left: 0; width: 16px; height: 16px;
+	top: 4px; left: 0; width: 16px; height: 16px;
 	cursor: pointer;
 }
 .info .icon span {

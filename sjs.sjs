@@ -7,7 +7,6 @@ if (location.href.match(/:8000/i)) {
 }
 var API_BASE = 'https://api.instagram.com/v1';
 var CORS_BASE = 'https://corstagram.appspot.com/v1';
-CORS_BASE = 'http://localhost:8080/v1';
 var me;
 
 function req(url) {
@@ -203,6 +202,7 @@ function Media(id) {
 		that.likes.merge(json.likes, function(c) {
 			return UserFactory.fromJSON(c);
 		});
+		that.location = json.location;
 		var comments = { count: 0, data: [] };
 		if (json.comments != null) {
 			comments.count = json.comments.count;
@@ -467,9 +467,15 @@ function MediaView(media) {
 	var that = new View($('#picture').tpl());
 	var view = that.view;
 
+
+	// user
+
 	view.user.html(user_html(media.user));
 	view.picture.append('<img src="' + media.user.profilePicture + '" alt="">');
 	view.date.text(formatDate(media.created));
+
+
+	// image
 
 	function appendImage(image) {
 		var el = new Image();
@@ -497,6 +503,21 @@ function MediaView(media) {
 		}
 	});
 
+
+	// geotag
+	
+	if (media.location) {
+		var place = media.location.latitude + ', ' + media.location.longitude;
+		var placeName = place;
+		if (media.location.name) placeName = media.location.name;
+		view.geo.html('<a href="http://maps.google.com/?q=' + encodeURIComponent(location) + '">' + placeName + '</a>');
+	} else {
+		view.geoContainer.hide();
+	}
+
+
+	// comments
+
 	var commentsView = new CollectionView(media.comments);
 	commentsView.createView = function(comment) {
 		var commentView = new View($('#comment').tpl());
@@ -511,6 +532,9 @@ function MediaView(media) {
 	commentsView.renderTo(view.rows);
 	updateCommentCount();
 	media.comments.on('change', updateCommentCount);
+
+
+	// likes
 
 	function showLikes() {
 		var html = '';
