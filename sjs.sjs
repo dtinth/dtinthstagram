@@ -42,6 +42,9 @@ function main() {
 		var feed = new HomeFeed();
 		new FeedView(feed).renderTo('#main');
 		feed.loadNext();
+		setTimeout(function() {
+			feed.refresh();
+		}, 60000);
 	} catch (e) {
 		return authenticationNeeded();
 	}
