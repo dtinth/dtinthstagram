@@ -46,8 +46,7 @@ function main() {
 	} catch (e) {
 		return authenticationNeeded();
 	}
-	var feed = new UserFeed('self');
-	//new HomeFeed();
+	var feed = new HomeFeed();// new UserFeed('self');
 	new FeedView(feed).renderTo('#main');
 	feed.loadNext();
 	setInterval(function() {
