@@ -814,7 +814,6 @@ function MediaView(media) {
 
 }
 
-
 function formatDate(cdate) {
 	var fdate = '';
 	var now = new Date();
@@ -828,7 +827,7 @@ function formatDate(cdate) {
 }
 
 function user_html(user) {
-	return '<span class="username">' + user.username + '</span>';
+	return '<span class="username" data-username="' + user.username + '" data-uid="' + user.id + '">' + user.username + '</span>';
 }
 
 function authenticationNeeded() {
@@ -839,3 +838,6 @@ function authenticationNeeded() {
 }
 
 $(main);
+$('[data-username]').live('click', function() {
+	location.href = '?u=' + $(this).attr('data-username');
+});
