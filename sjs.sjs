@@ -8,6 +8,8 @@ if (location.href.match(/:8000/i)) {
 var API_BASE = 'https://api.instagram.com/v1';
 var CORS_BASE = 'https://corstagram.appspot.com/v1';
 //CORS_BASE = 'http://localhost:8080/v1';//!!!!!!!!!!!!
+
+var APP_NAME = 'dtinthstagram';
 var me;
 
 function req(url) {
@@ -33,22 +35,22 @@ function api(endpoint) {
 	return req(api_url(endpoint));
 }
 
-function getFeed() {
+function getView() {
 	var m;
 	if ((m = location.search.match(/uid=(\d+|self)/))) {
-		return new UserFeed(m[1]);
+		return new FeedView(new UserFeed(m[1]));
 	}
 	if ((m = location.search.match(/u=(\w+)/))) {
 		var res = api(API_BASE + '/users/search?q=' + m[1] + '&count=1');
 		for (var i = 0; i < res.data.length; i ++) {
 			if (res.data[i].username == m[1]) {
-				return new UserFeed(res.data[i].id);
+				return new FeedView(new UserFeed(res.data[i].id));
 			}
 		}
 		alert('cannot find user: ' + m[1]);
 		throw new Error('cannot find user: ' + m[1]);
 	}
-	return new HomeFeed();
+	return new FeedView(new HomeFeed());
 }
 
 function main() {
@@ -65,22 +67,32 @@ function main() {
 		return authenticationNeeded();
 	}
 
-	var feed = getFeed();
-	var view = new FeedView(feed).renderTo('#main');
-	feed.loadNext();
+	var view = getView();
+	view.renderTo('#main');
+
+	if (view.feed) spawn view.feed.loadNext();
 	setInterval(function() {
-		feed.refresh();
+		if (view.feed) view.feed.refresh();
 	}, 60000);
-	if (window.fluid) {
-		setInterval(function() {
-			var unseen = view.getUnseen();
-			if (unseen == 0) {
-				window.fluid.dockBadge = '';
-			} else {
-				window.fluid.dockBadge = unseen;
-			}
-		}, 2000);
+
+	// unseen count
+	function setUnseen(count) {
+		var titleBase = view.getTitleBar() + '@' + me.username + ' - ' + APP_NAME;
+		if (count == 0) {
+			if (window.fluid) window.fluid.dockBadge = '';
+			document.title = titleBase;
+		} else {
+			if (window.fluid) window.fluid.dockBadge = count;
+			document.title = '(' + count + ') ' + titleBase;
+		}
 	}
+	function updateUnseen() {
+		var unseen = view.getUnseen();
+		setUnseen(unseen);
+		setTimeout(updateUnseen, 1500);
+	}
+	updateUnseen();
+
 }
 
 function EventEmitter() {
@@ -322,6 +334,10 @@ function User(id) {
 function Factory() {
 	var that = {};
 	that.map = {};
+	that.has = function(id) {
+		var key = 'id_' + id;
+		return !!that.map[key];
+	};
 	that.get = function(id) {
 		var key = 'id_' + id;
 		return that.map[key] || (that.map[key] = that.create(id));
@@ -357,6 +373,9 @@ function Feed() {
 		}
 		return addition;
 	}
+	that.getTitleBar = function() {
+		return '';
+	};
 	that.loadNext = function() {
 		try {
 			that.emit('startLoading');
@@ -394,10 +413,15 @@ function HomeFeed() {
 	return that;
 }
 
-function UserFeed(user) {
+function UserFeed(uid) {
 	var that = new Feed();
-	that.loader = new FeedLoader(api_url(API_BASE + '/users/' + user + '/media/recent'));
-	that.title = '/users/' + user + '/media/recent';
+	that.loader = new FeedLoader(api_url(API_BASE + '/users/' + uid + '/media/recent'));
+	that.title = '/users/' + uid + '/media/recent';
+	that.getTitleBar = function() {
+		if (!UserFactory.has(uid)) return '';
+		var user = UserFactory.get(uid);
+		return '[user: ' + user.username + '] ';
+	};
 	return that;
 }
 
@@ -426,6 +450,10 @@ function FeedView(feed) {
 	that.view.el.iconify();
 	that.view.title.text(feed.title);
 	that.view.loadMore.click(that.feed.loadNext).hide();
+	
+	that.getTitleBar = function() {
+		return that.feed.getTitleBar();
+	};
 
 	that.feed.on('startLoading', function() {
 		that.view.loading.show();
