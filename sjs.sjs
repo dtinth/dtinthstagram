@@ -700,7 +700,6 @@ function MediaView(media) {
 					addCommentView.disable();
 					media.comment(text);
 					addCommentView.hide();
-					media.reload();
 				} catch (e) {
 					alert('cannot post comment:\n' + e.toString());
 				} finally {
