@@ -723,6 +723,7 @@ function MediaView(media) {
 		}
 		commentView.view.user.html(user_html(comment.from));
 		commentView.view.text.text(comment.text);
+		commentView.view.text.html(emoji.convert(commentView.view.text.html()));
 		commentView.view.date.html(formatDate(comment.created));
 		return commentView;
 	};
