@@ -27,7 +27,6 @@ h1 {
 .picture {
 	position: relative;
 	margin-bottom: 16px;
-	min-height: 306px;
 }
 .left {
 	position: absolute;
@@ -90,9 +89,6 @@ h1 {
 	vertical-align: middle;
 	margin-left: 6px;
 }
-.picture.zoomed {
-	min-height: 612px;
-}
 .picture.zoomed .image {
 	width: 612px; height: 612px;
 }
@@ -102,8 +98,14 @@ h1 {
 }
 
 .picture {
+	min-height: 306px;
+}
+.picture.zoomed {
+	min-height: 612px;
+}
+.picture {
 	-moz-transition: 0.5s min-height;
-	-wekit-transition: 0.5s min-height;
+	-webkit-transition: 0.5s min-height;
 }
 .image {
 	-moz-transition: 0.5s width, 0.5s height;
