@@ -46,7 +46,8 @@ function main() {
 	} catch (e) {
 		return authenticationNeeded();
 	}
-	var feed = new HomeFeed();// new UserFeed('self');
+	var feed = new HomeFeed();
+	feed = new UserFeed('self');
 	var view = new FeedView(feed).renderTo('#main');
 	feed.loadNext();
 	setInterval(function() {
@@ -261,6 +262,7 @@ function Media(id) {
 			if (res.meta && res.meta.code == 200) {
 				that.setLiked(target);
 			}
+			return target;
 		} finally {
 			that.emit('finishLike');
 		}
@@ -785,8 +787,9 @@ function MediaView(media) {
 	media.on('startReload', function() { view.right.addClass('dim'); });
 	media.on('finishReload', function() { view.right.removeClass('dim'); });
 	view.likeIcon.click(function() {
-		media.toggleLike();
+		var target = media.toggleLike();
 		media.reload();
+		media.setLiked(target);
 	});
 
 	return that;
