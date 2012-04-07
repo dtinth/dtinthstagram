@@ -33,6 +33,24 @@ function api(endpoint) {
 	return req(api_url(endpoint));
 }
 
+function getFeed() {
+	var m;
+	if ((m = location.search.match(/uid=(\d+|self)/))) {
+		return new UserFeed(m[1]);
+	}
+	if ((m = location.search.match(/u=(\w+)/))) {
+		var res = api(API_BASE + '/users/search?q=' + m[1] + '&count=1');
+		for (var i = 0; i < res.data.length; i ++) {
+			if (res.data[i].username == m[1]) {
+				return new UserFeed(res.data[i].id);
+			}
+		}
+		alert('cannot find user: ' + m[1]);
+		throw new Error('cannot find user: ' + m[1]);
+	}
+	return new HomeFeed();
+}
+
 function main() {
 	if (!ACCESS_TOKEN) {
 		return authenticationNeeded();
@@ -46,8 +64,8 @@ function main() {
 	} catch (e) {
 		return authenticationNeeded();
 	}
-	var feed = new HomeFeed();
-	feed = new UserFeed('self');
+
+	var feed = getFeed();
 	var view = new FeedView(feed).renderTo('#main');
 	feed.loadNext();
 	setInterval(function() {
@@ -258,7 +276,7 @@ function Media(id) {
 		try {
 			that.emit('startLike');
 			var target = !that.liked;
-			var res = post(api_url(CORS_BASE + '/media/' + that.id + '/likes/' + (target ? '' : '?method=DELETE')));
+			var res = (target ? post : del)(api_url(CORS_BASE + '/media/' + that.id + '/likes/'));
 			if (res.meta && res.meta.code == 200) {
 				that.setLiked(target);
 			}
