@@ -35,22 +35,22 @@ function api(endpoint) {
 	return req(api_url(endpoint));
 }
 
-function getView() {
+function getFeed() {
 	var m;
 	if ((m = location.search.match(/uid=(\d+|self)/))) {
-		return new FeedView(new UserFeed(m[1]));
+		return new UserFeed(m[1]);
 	}
 	if ((m = location.search.match(/u=(\w+)/))) {
 		var res = api(API_BASE + '/users/search?q=' + m[1] + '&count=1');
 		for (var i = 0; i < res.data.length; i ++) {
 			if (res.data[i].username == m[1]) {
-				return new FeedView(new UserFeed(res.data[i].id));
+				return new UserFeed(res.data[i].id);
 			}
 		}
 		alert('cannot find user: ' + m[1]);
 		throw new Error('cannot find user: ' + m[1]);
 	}
-	return new FeedView(new HomeFeed());
+	return new HomeFeed();
 }
 
 function main() {
@@ -67,7 +67,8 @@ function main() {
 		return authenticationNeeded();
 	}
 
-	var view = getView();
+	var feed = getFeed();
+	var view = new FeedView(feed);
 	view.renderTo('#main');
 
 	if (view.feed) spawn view.feed.loadNext();
@@ -417,11 +418,21 @@ function UserFeed(uid) {
 	var that = new Feed();
 	that.loader = new FeedLoader(api_url(API_BASE + '/users/' + uid + '/media/recent'));
 	that.title = '/users/' + uid + '/media/recent';
+	that.userInfo = null;
+	that.user = null;
 	that.getTitleBar = function() {
 		if (!UserFactory.has(uid)) return '';
 		var user = UserFactory.get(uid);
 		return '[user: ' + user.username + '] ';
 	};
+	function loadUserInfo() {
+		var res = api(API_BASE + '/users/' + uid);
+		var user = UserFactory.fromJSON(res.data);
+		that.userInfo = res.data;
+		that.user = user;
+		that.emit('userInfoLoaded');
+	}
+	spawn loadUserInfo();
 	return that;
 }
 
@@ -455,6 +466,29 @@ function FeedView(feed) {
 		return that.feed.getTitleBar();
 	};
 
+	// user info, if available
+	var userInfoView = null;
+	var userInfoChecked = false;
+	function showUserInfo() {
+		if (userInfoView == null) {
+			userInfoView = new UserInfoView(that.feed.userInfo, that.feed.user);
+			userInfoView.renderTo(that.view.userInfo);
+			that.view.userInfo.slideDown('slow');
+		}
+	}
+	that.view.userInfo.hide();
+	function checkUserInfo() {
+		return; // not now! TODO TODO TODO TODO TODO
+		if (userInfoChecked) return;
+		userInfoChecked = true;
+		if (that.feed.userInfo != null) {
+			showUserInfo();
+		}
+		that.feed.on('userInfoLoaded', showUserInfo);
+	}
+
+	// loading indicator
+	
 	that.feed.on('startLoading', function() {
 		that.view.loading.show();
 		that.view.loadMore.hide();
@@ -465,6 +499,9 @@ function FeedView(feed) {
 			that.view.loadMore.show();
 		}
 	});
+
+	
+	// refreshing indicator
 
 	var refreshing = false;
 	that.feed.on('startRefreshing', function() {
@@ -480,6 +517,9 @@ function FeedView(feed) {
 			that.feed.refresh();
 		}
 	});
+
+
+	// appending and prepending media
 
 	function showList(list) {
 		var el = $('<div class="changeset"></div>');
@@ -503,6 +543,7 @@ function FeedView(feed) {
 			var top = Math.round(window.innerHeight * Math.pow(1 - x, 2));
 			changeset.css('top', top + 'px');
 		});
+		checkUserInfo();
 	});
 	that.feed.on('prepend', function(newData) {
 		var el = that.view.contents.find('.picture').eq(0);
@@ -525,6 +566,9 @@ function FeedView(feed) {
 			changeset[0].style.top = top + 'px';
 		});
 	});
+
+
+	// get number of unseen pictures
 
 	that.getUnseen = function() {
 		var views = that.view.contents.find('.picture');
@@ -840,6 +884,12 @@ function MediaView(media) {
 
 	return that;
 
+}
+
+function UserInfoView(userInfo, user) {
+	var that = new View($('#user-info').tpl());
+	that.view.picture.append('<img src="' + user.profilePicture + '" alt="">');
+	return that;
 }
 
 function formatDate(cdate) {

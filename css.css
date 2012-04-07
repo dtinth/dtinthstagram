@@ -247,3 +247,6 @@ h2 {
 [data-username] {
 	cursor: pointer;
 }
+.user-info {
+	padding-bottom: 16px;
+}
