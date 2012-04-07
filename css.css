@@ -4,7 +4,6 @@ body {
 	font: 15px Verdana, sans-serif;
 }
 html {
-	overflow-x: hidden;
 	overflow-y: scroll;
 }
 
