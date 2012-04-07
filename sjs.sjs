@@ -47,11 +47,21 @@ function main() {
 		return authenticationNeeded();
 	}
 	var feed = new HomeFeed();// new UserFeed('self');
-	new FeedView(feed).renderTo('#main');
+	var view = new FeedView(feed).renderTo('#main');
 	feed.loadNext();
 	setInterval(function() {
 		feed.refresh();
 	}, 60000);
+	if (window.fluid) {
+		setInterval(function() {
+			var unseen = view.getUnseen();
+			if (unseen == 0) {
+				window.fluid.dockBadge = '';
+			} else {
+				window.fluid.dockBadge = unseen;
+			}
+		}, 2000);
+	}
 }
 
 function EventEmitter() {
@@ -87,6 +97,7 @@ function View(view) {
 			rendered = true;
 		}
 		that.view.el.appendTo(el);
+		return that;
 	};
 	return that;
 }
@@ -395,7 +406,7 @@ function FeedView(feed) {
 	that.view.el.iconify();
 	that.view.title.text(feed.title);
 	that.view.loadMore.click(that.feed.loadNext).hide();
-	
+
 	that.feed.on('startLoading', function() {
 		that.view.loading.show();
 		that.view.loadMore.hide();
@@ -466,6 +477,25 @@ function FeedView(feed) {
 			changeset[0].style.top = top + 'px';
 		});
 	});
+
+	that.getUnseen = function() {
+		var views = that.view.contents.find('.picture');
+		var min = 0, max = views.length - 1;
+		var l = min, r = max;
+		while (l <= r) {
+			var m = Math.floor((l + r) / 2);
+			if (views.eq(m).offset().top < window.scrollY) {
+				if (m + 1 > max || window.scrollY <= views.eq(m + 1).offset().top) {
+					return m + 1;
+				} else {
+					l = m + 1;
+				}
+			} else {
+				r = m - 1;
+			}
+		}
+		return 0;
+	};
 
 	return that;
 
