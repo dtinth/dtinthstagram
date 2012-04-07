@@ -131,6 +131,16 @@ function Comment(json) {
 	that.text = json.text;
 	that.from = UserFactory.fromJSON(json.from);
 	that.id = json.id;
+	that.isMention = function() {
+		var mentions = that.text.match(/@\w+/g);
+		if (!mentions) return false;
+		for (var i = 0; i < mentions.length; i ++) {
+			if (mentions[i].toLowerCase() == '@' + me.username.toLowerCase()) {
+				return true;
+			}
+		}
+		return false;
+	};
 	return that;
 }
 
@@ -678,6 +688,9 @@ function MediaView(media) {
 	var commentsView = new CollectionView(media.comments);
 	commentsView.createView = function(comment) {
 		var commentView = new View($('#comment').tpl());
+		if (comment.isMention()) {
+			commentView.view.el.addClass('comment-mention');
+		}
 		commentView.view.user.html(user_html(comment.from));
 		commentView.view.text.text(comment.text);
 		commentView.view.date.html(formatDate(comment.created));
