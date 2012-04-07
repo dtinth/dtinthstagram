@@ -50,6 +50,7 @@ h1 {
 .image {
 	background: #090807;
 	position: relative;
+	cursor: pointer;
 }
 .image img {
 	position: absolute;
@@ -110,7 +111,7 @@ h1 {
 
 .comment, .likes, .geo {
 	line-height: 1.5;
-	margin-bottom: 0.5ex;
+	padding-bottom: 0.5ex;
 	word-wrap: break-word;
 }
 img.hide { opacity: 0; }
@@ -167,7 +168,8 @@ a {
 	cursor: pointer;
 }
 .refresh-button.dim,
-.icon.dim, .right.dim {
+.icon.dim, .right.dim,
+.add-comment.dim {
 	opacity: 0.3;
 }
 
@@ -182,3 +184,35 @@ h2 {
 .changeset {
 	position: relative;
 }
+
+
+
+.add-comment {
+	position: relative;
+}
+.add-comment .pointer {
+	position: absolute;
+	top: 4px; left: 0;
+	width: 12; height: 12;
+	z-index: 1;
+}
+.add-comment .input {
+	position: relative;
+	margin-left: 10px;
+	border: 1px solid #454443;
+	background: #090807;
+	padding: 2px 3px;
+}
+.add-comment textarea {
+	margin: 0; padding: 0; border: 0;
+	background: #090807;
+	color: #e9e8e7;
+	resize: none;
+	font: 15px Verdana, Tahoma, sans-serif;
+	width: 100%;
+	height: 3em;
+}
+.add-comment .user {
+	font-weight: bold;
+}
+

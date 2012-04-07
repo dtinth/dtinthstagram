@@ -7,17 +7,22 @@ if (location.href.match(/:8000/i)) {
 }
 var API_BASE = 'https://api.instagram.com/v1';
 var CORS_BASE = 'https://corstagram.appspot.com/v1';
+//CORS_BASE = 'http://localhost:8080/v1';//!!!!!!!!!!!!
 var me;
 
 function req(url) {
 	return http.jsonp(url);
 }
 
-function post(url) {
-	return http.json(url, { method: "POST" });
+function post(url, body) {
+	return http.json(url, { method: "POST", body: body });
 }
 function del(url) {
 	return http.json(url, { method: "DELETE" });
+}
+function up(res) {
+	if (res.meta) return new Error(res.meta.code + ' ' + res.meta.error_type + ' ' + res.meta.error_message);
+	return new Error('cannot load: ' + res);
 }
 
 function api_url(endpoint) {
@@ -38,15 +43,16 @@ function main() {
 			throw new Error('unauthorized');
 		}
 		me = UserFactory.fromJSON(res);
-		var feed = new HomeFeed();
-		new FeedView(feed).renderTo('#main');
-		feed.loadNext();
-		setInterval(function() {
-			feed.refresh();
-		}, 60000);
 	} catch (e) {
 		return authenticationNeeded();
 	}
+	var feed = new UserFeed('self');
+	//new HomeFeed();
+	new FeedView(feed).renderTo('#main');
+	feed.loadNext();
+	setInterval(function() {
+		feed.refresh();
+	}, 60000);
 }
 
 function EventEmitter() {
@@ -239,6 +245,14 @@ function Media(id) {
 			that.emit('finishLike');
 		}
 	};
+	that.comment = function(text) {
+		var res = post(api_url(CORS_BASE + '/media/' + that.id + '/comments'), 'text=' + encodeURIComponent(text));
+		if (res.meta && res.meta.code == 200) {
+			that.comments.append(new Comment(res.data));
+		} else {
+			throw up(res);
+		}
+	};
 	that.reload = function() {
 		try {
 			that.emit('startReload');
@@ -337,6 +351,13 @@ function HomeFeed() {
 	var that = new Feed();
 	that.loader = new FeedLoader(api_url(API_BASE + '/users/self/feed'));
 	that.title = '/users/self/feed';
+	return that;
+}
+
+function UserFeed(user) {
+	var that = new Feed();
+	that.loader = new FeedLoader(api_url(API_BASE + '/users/' + user + '/media/recent'));
+	that.title = '/users/' + user + '/media/recent';
 	return that;
 }
 
@@ -443,6 +464,7 @@ function FeedView(feed) {
 
 function CollectionView(collection) {
 	var that = new View($('#collection').tpl());
+	/*
 	function dom(list) {
 		var el = $('<div class="collectionview-changeset"></div>');
 		for (var i = 0; i < list.length; i ++) {
@@ -459,7 +481,143 @@ function CollectionView(collection) {
 			that.view.el.prepend(dom(list));
 		});
 	};
+	*/
+	var display = [];
+	var animationEnabled = false;
+	function update() {
+		var all = [];
+		var prevMap = {};
+		var nextMap = {};
+		var next = [];
+		for (var i = 0; i < display.length; i ++) {
+			var c = display[i];
+			prevMap[c.id] = c;
+			all.push(c);
+		}
+		for (var i = 0; i < collection.size(); i ++) {
+			var c = {
+				el: null,
+				view: null,
+				item: collection.get(i),
+				id: collection.get(i).id
+			};
+			if (!prevMap[c.id]) {
+				all.push(c);
+				next.push(c);
+			} else {
+				next.push(prevMap[c.id]);
+			}
+			nextMap[c.id] = true;
+		}
+		var comparator = function(a, b) {
+			return a.item.created.getTime() - b.item.created.getTime();
+		};
+		all.sort(comparator);
+		next.sort(comparator);
+		display = next;
+		for (var i = 0; i < all.length; i ++) {
+			var c = all[i];
+			if (!nextMap[c.id]) {
+				that.view.el.append(c.el);
+				if (animationEnabled) {
+					spawn slideUp(c.el[0]);
+				} else {
+					c.el.remove();
+				}
+			} else if (!prevMap[c.id]) {
+				c.el = $('<div class="collectionview-item"></div>');
+				c.view = that.createView(c.item);
+				c.view.renderTo(c.el);
+				that.view.el.append(c.el);
+				if (animationEnabled) {
+					spawn slideDown(c.el[0]);
+				}
+			} else {
+				that.view.el.append(c.el);
+			}
+		}
+	}
+	function slide(element, inner, formula) {
+		animation(300, function(x) {
+			var height = formula(x) * inner.offsetHeight;
+			element.style.height = height + 'px';
+		});
+	}
+	function slideDown(element) {
+		var inner = element.firstChild;
+		element.style.overflow = 'hidden';
+		element.style.height = '0';
+		slide(element, inner, function(x) { return (1 - Math.pow(1 - x, 2)) });
+		element.style.height = '';
+		element.style.overflow = '';
+	}
+	function slideUp(element) {
+		var inner = element.firstChild;
+		element.style.overflow = 'hidden';
+		slide(element, inner, function(x) { return Math.pow(1 - x, 2); });
+		element.parentNode && element.parentNode.removeChild(element);
+	}
+	that.render = function() {
+		update();
+		animationEnabled = true;
+		collection.on('change', function() {
+			update();
+		});
+	};
 	return that;
+}
+
+function AddCommentView(feed) {
+
+	var that = new View($('#add-comment').tpl());
+	that.view.pointer.each(function() {
+		var paper = Raphael(this, 12, 12);
+		paper.path('M 14 -1 M 10.5 -1 l 0 2 l -5 5 l 5 5 l 0 2 L 14 13')
+			.attr({ 'stroke': '#454443', 'fill': '#090807' });
+	});
+	that.view.user.html(user_html(me));
+	that.view.el.hide();
+
+	var showing = false;
+	that.hide = function() {
+		if (!showing) return;
+		showing = false;
+		that.view.el.hide('fast');
+	};
+	that.show = function() {
+		if (showing) return;
+		showing = true;
+		that.view.el.show('fast');
+		that.view.textarea[0].focus();
+	};
+	that.toggle = function() {
+		if (showing) {
+			that.hide();
+		} else {
+			that.show();
+		}
+	};
+	that.events = new EventEmitter();
+
+	that.view.textarea.keydown(function(e) {
+		if (e.keyCode == 13) {
+			that.events.emit('enter');
+			return false;
+		}
+	});
+	that.getText = function() {
+		return that.view.textarea[0].value;
+	};
+	that.disable = function() {
+		that.view.textarea[0].disabled = true;
+		that.view.el.addClass('dim');
+	};
+	that.enable = function() {
+		that.view.textarea[0].disabled = false;
+		that.view.el.removeClass('dim');
+	};
+	return that;
+
 }
 
 function MediaView(media) {
@@ -532,6 +690,27 @@ function MediaView(media) {
 	commentsView.renderTo(view.rows);
 	updateCommentCount();
 	media.comments.on('change', updateCommentCount);
+	var addCommentView = null;
+	view.commentIcon.click(function() {
+		if (addCommentView == null) {
+			addCommentView = new AddCommentView();
+			addCommentView.events.on('enter', function() {
+				var text = addCommentView.getText();
+				try {
+					addCommentView.disable();
+					media.comment(text);
+					addCommentView.hide();
+					media.reload();
+				} catch (e) {
+					alert('cannot post comment:\n' + e.toString());
+				} finally {
+					addCommentView.enable();
+				}
+			});
+			addCommentView.renderTo(view.addComment);
+		}
+		addCommentView.toggle();
+	});
 
 
 	// likes

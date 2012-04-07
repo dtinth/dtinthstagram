@@ -1,6 +1,7 @@
 <!DOCTYPE html><meta charset=utf-8><title>dtinthstagram</title>
 <link rel=stylesheet href=css.css>
 <body>
+
 <div id="main-wrapper">
 	<div id="main">
 		<h1 id="head">dtinthstagram</h1>
@@ -50,10 +51,19 @@
 		</div>
 		<div data-role="rowsContainer" class="info">
 			<div class="icon"
+				data-role="commentIcon"
 				data-icon="M16,5.333c-7.732,0-14,4.701-14,10.5c0,1.982,0.741,3.833,2.016,5.414L2,25.667l5.613-1.441c2.339,1.317,5.237,2.107,8.387,2.107c7.732,0,14-4.701,14-10.5C30,10.034,23.732,5.333,16,5.333z"
 				data-transform="t -9,-8 s -0.5,0.5"><span data-role="commentCount"></span></div>
 			<div class="info-data rows" data-role="rows"></div>
 		</div>
+		<div data-role="addComment"></div>
+	</div>
+</div>
+<div class="template add-comment" id="add-comment">
+	<div data-role="pointer" class="pointer"></div>
+	<div class="input">
+		<div class="user" data-role="user">username</div>
+		<div class="comment-data"><textarea data-role="textarea"></textarea></div>
 	</div>
 </div>
 <div class="template comment" id="comment">
