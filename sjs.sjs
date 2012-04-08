@@ -458,6 +458,7 @@ function Feed() {
 			if (addition.length > 0) {
 				that.append.apply(that.append, addition);
 			}
+			return addition.length;
 		} finally {
 			that.emit('finishLoading');
 		}
@@ -669,21 +670,34 @@ function FeedView(feed) {
 		var waiter = new ClickWaiter(that.view.loadMore);
 		var scrollWaiter = new ElementWaiter(window, 'scroll');
 		var count = 0;
+		var cont = false;
 		for (;;) {
 			waitfor {
 				waiter.wait();
 				count = 0;
 			} or {
 				for (;;) {
-					scrollWaiter.wait();
+					if (cont) {
+						cont = false;
+					} else {
+						scrollWaiter.wait();
+					}
 					if (that.active && count < 3 && window.scrollY + window.innerHeight > document.body.offsetHeight - 150) {
 						count ++;
 						break;
 					}
 				}
 			}
-			that.feed.loadNext();
+			try {
+				if (that.feed.loadNext() == 0) {
+					count = Infinity;
+				}
+			} catch (e) {
+				count = Infinity;
+				window.console && console.error(e);
+			}
 			hold(500);
+			cont = true;
 		}
 	}();
 
