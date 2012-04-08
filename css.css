@@ -247,9 +247,31 @@ h2 {
 [data-username] {
 	cursor: pointer;
 }
+
 .user-info {
 	padding-bottom: 16px;
+	position: relative;
+	min-height: 150px;
 }
+.user-info .user-picture,
+.user-info .infobox {
+	position: absolute;
+	top: 0; width: 150px; height: 150px;
+}
+.user-info .user-picture { left: 0; }
+.user-info .infobox { left: 154px; }
+.infobox-box { background: #090807; position: absolute; width: 73px; height: 73px; }
+.infobox-following { bottom: 0; left: 0; }
+.infobox-followers { bottom: 0; right: 0; }
+.infobox-photos { top: 0; left: 0; width: 150px; }
+.biobox {
+	background: #454443;
+	min-height: 150px;
+	margin-left: 308px;
+}
+.biobox-contents { padding: 6px; }
+.user-name .real-name { font: 18px Helvetica Neue, Helvetica; display: block; }
+
 .username, a.username {
 	color: #bef;
 }
