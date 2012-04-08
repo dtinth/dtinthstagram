@@ -676,7 +676,7 @@ function FeedView(feed) {
 			} or {
 				for (;;) {
 					scrollWaiter.wait();
-					if (count < 3 && window.scrollY + window.innerHeight > document.body.offsetHeight - 150) {
+					if (that.active && count < 3 && window.scrollY + window.innerHeight > document.body.offsetHeight - 150) {
 						count ++;
 						break;
 					}
