@@ -45,7 +45,7 @@ h1 {
 	padding-top: 0;
 	padding-bottom: 0;
 }
-.image {
+.picture .image {
 	background: #090807;
 	position: relative;
 	cursor: pointer;
@@ -184,7 +184,7 @@ a {
 .load-more {
 	cursor: pointer;
 }
-.refresh-button {
+.refresh-button, .switch-view-button {
 	display: inline-block;
 	width: 24px; height: 24px; vertical-align: middle;
 	cursor: pointer;
@@ -251,3 +251,33 @@ h2 {
 	color: #bef;
 }
 a img { border: 0; }
+
+.grid-item .grid-box {
+	height: 154px;
+	margin-top: -154px;
+	position: relative;
+}
+.grid-item .thumbnail {
+	position: absolute;
+	z-index: 1;
+	top: 0; left: 0;
+	width: 150px; height: 150px;
+}
+.grid-item[data-column="0"] .grid-box { margin-top: 0; }
+.grid-item[data-column="1"] .thumbnail { margin-top: 0; left: 154px; }
+.grid-item[data-column="2"] .thumbnail { margin-top: 0; left: 308px; }
+.grid-item[data-column="3"] .thumbnail { margin-top: 0; left: 462px; }
+.grid-item .thumbnail {
+	cursor: pointer;
+	background: #090807;
+}
+.grid-item .large-media-container { overflow: hidden; margin-left: -192px; padding-left: 192px; }
+.grid-item .large-media { padding-bottom: 158px; padding-top: 12px; }
+.grid-item[data-column="3"] .large-media { padding-bottom: 4px; }
+.grid-item.active .thumbnail img {
+	-webkit-transform: scale(0.9);
+	-moz-transform: scale(0.9);
+}
+.grid-item.active .thumbnail {
+	opacity: 0.5;
+}

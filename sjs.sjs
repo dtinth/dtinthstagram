@@ -53,42 +53,36 @@ function getFeed() {
 	return new HomeFeed();
 }
 
-function RateLimitedInvoker(callback) {
+function ClickWaiter(element) {
 	var that = {};
-	var lastTime = null;
-	var timer = null;
-	function fire() {
-		var now = new Date().getTime();
-		timer = null;
-		callback();
-	}
-	function setTimer(now, timeToCall) {
-		if (timer != null) timer.cancel();
-		timer = {
-			id: setTimeout(fire, Math.max(0, timeToCall - now)),
-			cancel: function() {
-				clearTimeout(this.id);
-			}
-		};
-	}
-	that.invoke = function(minDelay) {
-		var now = new Date().getTime();
-		if (timer != null) {
-			var timeToCall = lastTime + minDelay;
-			if (timeToCall < timer.timeToCall) {
-				setTimer(now, timeToCall);
-			}
-		} else if (lastTime == null || now - lastTime >= minDelay) {
-			lastTime = now;
-			callback();
-		} else {
-			var timeToCall = lastTime + minDelay;
-			setTimer(now, timeToCall);
-		}
+	var onclick = function() {};
+	$(element).click(function() { onclick(); });
+	that.wait = function() {
+		waitfor() { onclick = resume; }
 	};
 	return that;
 }
 
+function RateLimitedInvoker(callback, timeout) {
+	var that = {};
+	function worker() {
+		var cont = false;
+		while (true) {
+			if (cont) {
+				cont = false;
+			} else {
+				waitfor() {
+					that.invoke = resume;
+				}
+				that.invoke = function() { cont = true; }
+			}
+			spawn callback();
+			hold(timeout);
+		}
+	}
+	spawn worker();
+	return that;
+}
 function main() {
 	if (!ACCESS_TOKEN) {
 		return authenticationNeeded();
@@ -155,12 +149,16 @@ function main() {
 		var unseen = view.getUnseen();
 		setUnseen(unseen);
 	}
-	var updateUnseenDelayedInvoker = new RateLimitedInvoker(updateUnseen);
+	var updateUnseenDelayedInvoker = new RateLimitedInvoker(updateUnseen, 100);
 	$(window).bind('scroll', function() {
-		updateUnseenDelayedInvoker.invoke(150);
+		updateUnseenDelayedInvoker.invoke();
 	});
+	view.calculatePositionTable();
 	updateUnseen();
-	setInterval(updateUnseen, 1500);
+	setInterval(function() {
+		view.calculatePositionTable();
+		updateUnseen();
+	}, 1500);
 
 }
 
@@ -227,6 +225,7 @@ function FeedLoader(baseURL) {
 			maxId = null;
 			url = null;
 		}
+		res.data.splice(0, 2);
 		return handleResponse(res);
 	};
 	that.refresh = function() {
@@ -486,13 +485,13 @@ function UserFeed(uid) {
 	var that = new Feed();
 	that.loader = new FeedLoader(api_url(API_BASE + '/users/' + uid + '/media/recent'));
 	that.title = '/users/' + uid + '/media/recent';
-	that.userInfo = null;
-	that.user = null;
 	that.getTitleBar = function() {
 		if (!UserFactory.has(uid)) return '';
 		var user = UserFactory.get(uid);
 		return '[user: ' + user.username + '] ';
 	};
+	that.userInfo = null;
+	that.user = null;
 	function loadUserInfo() {
 		var res = api(API_BASE + '/users/' + uid);
 		var user = UserFactory.fromJSON(res.data);
@@ -500,26 +499,97 @@ function UserFeed(uid) {
 		that.user = user;
 		that.emit('userInfoLoaded');
 	}
-	spawn loadUserInfo();
+	that.userInfoStratum = spawn loadUserInfo();
 	return that;
 }
 
-function animation(duration, callback) {
-	var start = new Date().getTime();
-	do {
-		var now = new Date().getTime();
-		var value = Math.min(1, (now - start) / duration);
-		callback(value);
+var Fx = {
+
+	nextFrame: function() {
 		waitfor() {
-			if (typeof mozRequestAnimationFrame != 'undefined') {
+			if (typeof requestAnimationFrame == 'function') {
+				requestAnimationFrame(resume);
+			} else if (typeof mozRequestAnimationFrame == 'function') {
 				mozRequestAnimationFrame(resume);
+			} else if (typeof webkitRequestAnimationFrame == 'function') {
+				webkitRequestAnimationFrame(resume);
+			} else if (typeof msRequestAnimationFrame == 'function') {
+				msRequestAnimationFrame(resume);
 			} else {
-				hold(1);
+				hold(1000 / 60);
 				resume();
 			}
 		}
-	} while (now - start < duration);
-}
+	},
+
+	animation: function(duration, callback) {
+		var start = new Date().getTime();
+		do {
+			var now = new Date().getTime();
+			var value = Math.min(1, (now - start) / duration);
+			callback(value);
+			this.nextFrame();
+		} while (now - start < duration);
+	},
+
+	fadeOutAndShow: function(list) {
+		function setOpacity(o) {
+			for (var i = 0; i < list.length; i ++) {
+				list[i].style.opacity = o;
+			}
+		}
+		Fx.animation(200, function(x) {
+			setOpacity(1 - x);
+		});
+		return function() {
+			setOpacity(1);
+		};
+	},
+
+	slide: function(element, inner, duration, formula) {
+		duration = duration || 300;
+		Fx.animation(duration, function(x) {
+			var height = formula(x) * inner.offsetHeight;
+			element.style.height = height + 'px';
+		});
+	},
+	
+	slideDown: function(element, duration) {
+		var inner = element.firstChild;
+		element.style.overflow = 'hidden';
+		element.style.height = '0';
+		Fx.slide(element, inner, duration, function(x) { return (1 - Math.pow(1 - x, 2)) });
+		element.style.height = '';
+		element.style.overflow = '';
+	},
+
+	slideUp: function(element, duration, remove) {
+		var inner = element.firstChild;
+		element.style.overflow = 'hidden';
+		Fx.slide(element, inner, duration, function(x) { return Math.pow(1 - x, 2); });
+		remove && element.parentNode && element.parentNode.removeChild(element);
+	},
+
+	image: function(src) {
+		var el = new Image();
+		el.className = 'hide';
+		function worker() {
+			waitfor {
+				waitfor() {
+					el.onload = resume;
+					el.src = src;
+				}
+			} or {
+				hold(3000);
+			}
+			hold(1);
+			el.className = 'show';
+		}
+		spawn worker();
+		return $(el);
+	}
+
+};
 
 function FeedView(feed) {
 
@@ -529,24 +599,44 @@ function FeedView(feed) {
 	that.view.el.iconify();
 	that.view.title.text(feed.title);
 	that.view.loadMore.click(that.feed.loadNext).hide();
-	
+
 	that.getTitleBar = function() {
 		return that.feed.getTitleBar();
 	};
+	that.add = function(view) {
+		view.renderTo(that.view.contents);
+		view.setParentView(that);
+	};
+	that.fadeHeader = function() {
+		return Fx.fadeOutAndShow([that.view.head[0], document.getElementById('head')]);
+	};
+	that.fadeFooter = function() {
+		return Fx.fadeOutAndShow([that.view.footer[0]]);
+	};
+
 
 	// user info, if available
+	
 	var userInfoView = null;
-	var userInfoChecked = false;
 	function showUserInfo() {
-		if (userInfoView == null) {
-			userInfoView = new UserInfoView(that.feed.userInfo, that.feed.user);
-			userInfoView.renderTo(that.view.userInfo);
-			that.view.userInfo.slideDown('slow');
-		}
+		userInfoView = new UserInfoView(that.feed.userInfo, that.feed.user);
+		userInfoView.renderTo(that.view.userInfo);
+		that.view.userInfo.slideDown('slow');
 	}
 	that.view.userInfo.hide();
+
+	function userInfoWorker() {
+		waitfor() {
+			that.canShowUserInfo = resume;
+		}
+		return; // not yet :3
+		if (!that.feed.userInfoStratum) return;
+		that.feed.userInfoStratum.waitforValue();
+		showUserInfo();
+	}
+	spawn userInfoWorker();
+
 	function checkUserInfo() {
-		return; // not now! TODO TODO TODO TODO TODO
 		if (userInfoChecked) return;
 		userInfoChecked = true;
 		if (that.feed.userInfo != null) {
@@ -555,8 +645,9 @@ function FeedView(feed) {
 		that.feed.on('userInfoLoaded', showUserInfo);
 	}
 
+
 	// loading indicator
-	
+
 	that.feed.on('startLoading', function() {
 		that.view.loading.show();
 		that.view.loadMore.hide();
@@ -568,7 +659,7 @@ function FeedView(feed) {
 		}
 	});
 
-	
+
 	// refreshing indicator
 
 	var refreshing = false;
@@ -587,6 +678,94 @@ function FeedView(feed) {
 	});
 
 
+
+	
+	var activeView = null;
+
+
+	// get number of unseen pictures
+
+	var posTable = [];
+	that.calculatePositionTable = function() {
+		posTable = [];
+		if (activeView == null) return;
+		var imgs = activeView.getItemElements();
+		for (var i = 0; i < imgs.length; i ++) {
+			posTable.push(imgs.eq(i).offset().top);
+		}
+	};
+	that.getUnseen = function() {
+		var min = 0, max = posTable.length - 1;
+		var l = min, r = max;
+		while (l <= r) {
+			var m = Math.floor((l + r) / 2);
+			if (posTable[m] < window.scrollY) {
+				if (m + 1 > max || window.scrollY <= posTable[m + 1]) {
+					return m + 1;
+				} else {
+					l = m + 1;
+				}
+			} else {
+				r = m - 1;
+			}
+		}
+		return 0;
+	};
+
+
+	// view switching
+	
+	spawn function() {
+		var modes = [
+			function() { return new MediaListView(that.feed); },
+			function() { return new MediaGridView(that.feed); }
+		];
+		var views = {};
+		var currentMode = 0;
+		var waiter = new ClickWaiter(that.view.switchView);
+		for (;;) {
+			activeView = views[currentMode];
+			if (!activeView) {
+				activeView = views[currentMode] = modes[currentMode]();
+				that.add(activeView);
+			} else {
+				activeView.view.el.show();
+			}
+			activeView.active = true;
+			that.calculatePositionTable();
+			waiter.wait();
+			activeView.active = false;
+			activeView.view.el.hide();
+			currentMode = (currentMode + 1) % modes.length;
+		}
+	}();
+
+	return that;
+
+}
+
+function MediaCollectionView(template, feed) {
+
+	var that = new View(template);
+
+	that.feed = feed;
+	that.active = true;
+	that.setParentView = function(parentView) {
+		that.parentView = parentView;
+	};
+
+	return that;
+
+}
+
+function MediaListView(feed) {
+
+	var that = new MediaCollectionView($('#list-view').tpl(), feed);
+
+	that.getItemElements = function() {
+		return that.view.el.find('.image');
+	};
+
 	// appending and prepending media
 
 	function showList(list) {
@@ -599,68 +778,110 @@ function FeedView(feed) {
 		return el;
 	}
 
-	function fadeAndShow(list) {
-		function setOpacity(o) {
-			for (var i = 0; i < list.length; i ++) {
-				list[i].style.opacity = o;
-			}
-		}
-		animation(200, function(x) {
-			setOpacity(1 - x);
-		});
-		return function() {
-			setOpacity(1);
-		};
-	}
-
-	that.view.contents.append(showList(that.feed.list));
+	that.view.el.append(showList(that.feed.list));
 	that.feed.on('append', function(nextData) {
-		var show = fadeAndShow([that.view.footer[0]]);
 		var changeset = showList(nextData);
-		that.view.contents.append(changeset);
-		show();
-		animation(600, function(x) {
+		if (!that.active) {
+			that.view.el.append(changeset);
+			return;
+		}
+		var show = that.parentView && that.parentView.fadeFooter && that.parentView.fadeFooter();
+		that.view.el.append(changeset);
+		show && show();
+		Fx.animation(600, function(x) {
 			var top = Math.round(window.innerHeight * Math.pow(1 - x, 2));
 			changeset.css('top', top + 'px');
 		});
-		checkUserInfo();
+		that.parentView && that.parentView.canShowUserInfo && that.parentView.canShowUserInfo();
 	});
+	
 	that.feed.on('prepend', function(newData) {
-		var el = that.view.contents.find('.picture').eq(0);
 		var changeset = showList(newData);
-		var show = fadeAndShow([that.view.head[0], document.getElementById('head')]);
+		if (!that.active) {
+			that.view.el.prepend(changeset);
+			return;
+		}
+		var el = that.view.el.find('.picture').eq(0);
+		var show = that.parentView && that.parentView.fadeHeader && that.parentView.fadeHeader();
 		var oldTop = el.offset().top;
-		that.view.contents.prepend(changeset);
+		changeset.css('visibility', 'hidden');
+		that.view.el.prepend(changeset);
 		var newTop = el.offset().top;
 		window.scrollBy(0, newTop - oldTop);
-		show();
-		animation(600, function(x) {
+		show && show();
+		changeset.css('visibility', '');
+		Fx.animation(600, function(x) {
 			var top = Math.round(-window.innerHeight * Math.pow(1 - x, 2));
 			changeset[0].style.top = top + 'px';
 		});
 	});
 
+	return that;
 
-	// get number of unseen pictures
+}
 
-	that.getUnseen = function() {
-		var views = that.view.contents.find('.picture');
-		var min = 0, max = views.length - 1;
-		var l = min, r = max;
-		while (l <= r) {
-			var m = Math.floor((l + r) / 2);
-			if (views.eq(m).offset().top < window.scrollY) {
-				if (m + 1 > max || window.scrollY <= views.eq(m + 1).offset().top) {
-					return m + 1;
-				} else {
-					l = m + 1;
-				}
-			} else {
-				r = m - 1;
-			}
-		}
-		return 0;
+function MediaGridView(feed) {
+
+	var that = new MediaCollectionView($('#grid-view').tpl(), feed);
+
+	that.getItemElements = function() {
+		return that.view.el.find('.grid-item');
 	};
+
+	// appending and prepending media
+	var list = [];
+	var nextColumn = 0;
+	function showList(list) {
+		var el = $('<div class="changeset"></div>');
+		for (var i = 0; i < list.length; i ++) {
+			var view = new GridItemView(list[i]).renderTo(el);
+			view.view.el.attr('data-column', nextColumn);
+			nextColumn = (nextColumn + 1) % 4;
+		}
+		return el;
+	}
+
+	that.view.el.append(showList(that.feed.list));
+	that.feed.on('append', function(nextData) {
+		that.view.el.append(showList(nextData));
+	});
+	
+	that.feed.on('prepend', function(newData) {
+		that.view.el.prepend(showList(newData));
+		nextColumn = 0;
+		that.view.el.find('.grid-item').each(function() {
+			console.log($(this).attr('data-column'), nextColumn);
+			$(this).attr('data-column', nextColumn).addClass('wtf').removeClass('wtf'); // wtf
+			nextColumn = (nextColumn + 1) % 4;
+		});
+	});
+
+	return that;
+
+}
+
+function GridItemView(media) {
+
+	var that = new View($('#grid-item').tpl());
+	that.view.image.append(Fx.image(media.images.thumbnail.url));
+
+	spawn function() {
+		var waiter = new ClickWaiter(that.view.image);
+		that.view.large.hide();
+		waiter.wait();
+		var mediaView = new MediaView(media);
+		mediaView.renderTo(that.view.info);
+		that.view.large.show();
+		for (;;) {
+			that.view.el.addClass('active');
+			Fx.slideDown(that.view.large[0], 500);
+			waiter.wait();
+			that.view.el.removeClass('active');
+			Fx.slideUp(that.view.large[0], 500);
+			waiter.wait();
+			console.log(':3');
+		}
+	}();
 
 	return that;
 
@@ -668,24 +889,6 @@ function FeedView(feed) {
 
 function CollectionView(collection) {
 	var that = new View($('#collection').tpl());
-	/*
-	function dom(list) {
-		var el = $('<div class="collectionview-changeset"></div>');
-		for (var i = 0; i < list.length; i ++) {
-			that.createView(list[i]).renderTo(el);
-		}
-		return el;
-	}
-	that.render = function() {
-		that.view.el.append(dom(collection.list));
-		collection.on('append', function(list) {
-			that.view.el.append(dom(list));
-		});
-		collection.on('prepend', function(list) {
-			that.view.el.prepend(dom(list));
-		});
-	};
-	*/
 	var display = [];
 	var animationEnabled = false;
 	function update() {
@@ -724,7 +927,7 @@ function CollectionView(collection) {
 			if (!nextMap[c.id]) {
 				that.view.el.append(c.el);
 				if (animationEnabled) {
-					spawn slideUp(c.el[0]);
+					spawn Fx.slideUp(c.el[0], null, true);
 				} else {
 					c.el.remove();
 				}
@@ -734,32 +937,12 @@ function CollectionView(collection) {
 				c.view.renderTo(c.el);
 				that.view.el.append(c.el);
 				if (animationEnabled) {
-					spawn slideDown(c.el[0]);
+					spawn Fx.slideDown(c.el[0]);
 				}
 			} else {
 				that.view.el.append(c.el);
 			}
 		}
-	}
-	function slide(element, inner, formula) {
-		animation(300, function(x) {
-			var height = formula(x) * inner.offsetHeight;
-			element.style.height = height + 'px';
-		});
-	}
-	function slideDown(element) {
-		var inner = element.firstChild;
-		element.style.overflow = 'hidden';
-		element.style.height = '0';
-		slide(element, inner, function(x) { return (1 - Math.pow(1 - x, 2)) });
-		element.style.height = '';
-		element.style.overflow = '';
-	}
-	function slideUp(element) {
-		var inner = element.firstChild;
-		element.style.overflow = 'hidden';
-		slide(element, inner, function(x) { return Math.pow(1 - x, 2); });
-		element.parentNode && element.parentNode.removeChild(element);
 	}
 	that.render = function() {
 		update();
@@ -838,32 +1021,20 @@ function MediaView(media) {
 
 
 	// image
-
-	function appendImage(image) {
-		var el = new Image();
-		el.className = 'hide';
-		el.onload = function() {
-			el.className = 'show';
-		};
-		setTimeout(function() {
-			el.className = 'show';
-		}, 1000);
-		el.src = image.url;
-		$(el).appendTo(view.image);
-		return el;
-	}
-
-	var lowResImage = appendImage(media.images.low_resolution);
-	var highResAppended = false;
+	
+	var lowResImage = Fx.image(media.images.low_resolution.url).appendTo(view.image);
 
 	view.image.click(function() {
 		view.el.toggleClass('zoomed');
-		if (!highResAppended) {
-			highResAppended = true;
-			appendImage(media.images.standard_resolution);
-			lowResImage.className = 'dim';
-		}
 	});
+
+	spawn function() {
+		waitfor() {
+			view.image.one('click', resume);
+		}
+		lowResImage[0].className = 'dim';
+		Fx.image(media.images.standard_resolution.url).appendTo(view.image);
+	}();
 
 
 	// geotag

@@ -18,9 +18,11 @@
 		</div>
 	</div>
 </div>
+
 <div class="template" id="auth-needed">
 	<h1>Authentication Needed</h1>
 </div>
+
 <div class="template feed" id="feed">
 	<h2 data-role="head">
 		<span data-role="title">(feed title)</span>
@@ -29,6 +31,12 @@
 			data-transform="t -15 -16 t 12 12 s 0.6 0.6"
 			data-width="24" data-height="24"
 			class="refresh-button"></span>
+		<span data-role="switchView"
+			data-icon="M 12 11 m -8 -8 l 16 0 l 0 16 l -16 0 l 0 -16
+				m 2 2 l 0 12 l 12 0 l 0 -12 l -12 0"
+			data-transform="T -12 -11 s 0.9 0.9 T 12 11.6"
+			data-width="24" data-height="24"
+			class="switch-view-button"></span>
 	</h2>
 	<div data-role="userInfo"></div>
 	<div data-role="contents"></div>
@@ -37,6 +45,17 @@
 		<div data-role="loadMore" class="load-more">load more</div>
 	</div>
 </div>
+
+<div class="template list-view" id="list-view"></div>
+<div class="template grid-view" id="grid-view"></div>
+
+<div class="template grid-item" id="grid-item">
+	<div class="grid-box">
+		<div class="thumbnail image" data-role="image"></div>
+	</div>
+	<div class="large-media-container" data-role="large"><div class="large-media" data-role="info"></div></div>
+</div>
+
 <div class="template picture" id="picture">
 	<div class="left">
 		<span class="user" data-role="user">username</span
