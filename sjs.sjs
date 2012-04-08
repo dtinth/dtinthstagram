@@ -753,7 +753,6 @@ function MediaCollectionView(template, feed) {
 	that.setParentView = function(parentView) {
 		that.parentView = parentView;
 	};
-
 	return that;
 
 }
@@ -1017,7 +1016,7 @@ function MediaView(media) {
 
 	view.user.html(user_html(media.user));
 	view.picture.append('<a href="' + user_url(media.user) + '"><img src="' + media.user.profilePicture + '" alt=""></a>');
-	view.date.text(formatDate(media.created));
+	view.date.html('<a href="' + media.link + '">' + formatDate(media.created) + '</a>');
 
 
 	// image

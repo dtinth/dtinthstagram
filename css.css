@@ -71,6 +71,9 @@ h1 {
 	color: #8b8685;
 	font-size: 0.8em; margin-right: 32px;
 }
+.when a {
+	color: #8b8685;
+}
 .profile-picture, .profile-picture img {
 	width: 24px;
 	height: 24px;
