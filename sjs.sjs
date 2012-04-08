@@ -225,7 +225,7 @@ function FeedLoader(baseURL) {
 			maxId = null;
 			url = null;
 		}
-		res.data.splice(0, 2);
+		// res.data.splice(0, 2); // for debugging refresh button
 		return handleResponse(res);
 	};
 	that.refresh = function() {
