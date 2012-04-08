@@ -61,9 +61,6 @@ h1 {
 .left .user, .comment .user {
 	font-weight: bold;
 }
-.username {
-	color: #bef;
-}
 .comment.comment-mention {
 	color: #ffcccc;
 }
@@ -250,3 +247,7 @@ h2 {
 .user-info {
 	padding-bottom: 16px;
 }
+.username, a.username {
+	color: #bef;
+}
+a img { border: 0; }

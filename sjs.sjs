@@ -115,11 +115,18 @@ function main() {
 			document.title = '(' + count + ') ' + titleBase;
 		}
 	}
+	var lastUpdateUnseen = 0;
 	function updateUnseen() {
 		var unseen = view.getUnseen();
+		lastUpdateUnseen = new Date().getTime();
 		setUnseen(unseen);
 		setTimeout(updateUnseen, 1500);
 	}
+	$(window).bind('scroll', function() {
+		if (new Date().getTime() - lastUpdateUnseen > 150) {
+			updateUnseen();
+		}
+	});
 	updateUnseen();
 
 }
@@ -559,12 +566,21 @@ function FeedView(feed) {
 		return el;
 	}
 
+	function fadeAndShow(list) {
+		function setOpacity(o) {
+			for (var i = 0; i < list.length; i ++) {
+				list[i].style.opacity = o;
+			}
+		}
+		animation(200, function(x) {
+			setOpacity(1 - x);
+		});
+		setOpacity(1);
+	}
+
 	that.view.contents.append(showList(that.feed.list));
 	that.feed.on('append', function(nextData) {
-		animation(200, function(x) {
-			that.view.footer.css('opacity', (1 - x));
-		});
-		that.view.footer.css('opacity', 1);
+		fadeAndShow([that.view.footer[0]]);
 		var changeset = showList(nextData);
 		that.view.contents.append(changeset);
 		animation(600, function(x) {
@@ -576,19 +592,11 @@ function FeedView(feed) {
 	that.feed.on('prepend', function(newData) {
 		var el = that.view.contents.find('.picture').eq(0);
 		var changeset = showList(newData);
-		function setOpacity(o) {
-			that.view.head[0].style.opacity = o;
-			document.getElementById('head').style.opacity = o;
-		}
-		animation(200, function(x) {
-			var opacity = 1 - x;
-			setOpacity(opacity);
-		});
+		fadeAndShow([that.view.head[0], document.getElementById('head')]);
 		var oldTop = el.offset().top;
 		that.view.contents.prepend(changeset);
 		var newTop = el.offset().top;
 		window.scrollBy(0, newTop - oldTop);
-		setOpacity(1);
 		animation(600, function(x) {
 			var top = Math.round(-window.innerHeight * Math.pow(1 - x, 2));
 			changeset[0].style.top = top + 'px';
@@ -788,7 +796,7 @@ function MediaView(media) {
 	// user
 
 	view.user.html(user_html(media.user));
-	view.picture.append('<img src="' + media.user.profilePicture + '" alt="">');
+	view.picture.append('<a href="' + user_url(media.user) + '"><img src="' + media.user.profilePicture + '" alt=""></a>');
 	view.date.text(formatDate(media.created));
 
 
@@ -932,8 +940,11 @@ function formatDate(cdate) {
 	return fdate + cdate.getHours() + ':' + twoDigits(cdate.getMinutes()) + ':' + twoDigits(cdate.getSeconds());
 }
 
+function user_url(user) {
+	return '?u=' + user.username;
+}
 function user_html(user) {
-	return '<span class="username" data-username="' + user.username + '" data-uid="' + user.id + '">' + user.username + '</span>';
+	return '<a href="' + user_url(user) + '" class="username" data-username="' + user.username + '" data-uid="' + user.id + '">' + user.username + '</a>';
 }
 
 function authenticationNeeded() {
@@ -944,6 +955,3 @@ function authenticationNeeded() {
 }
 
 $(main);
-$('[data-username]').live('click', function() {
-	location.href = '?u=' + $(this).attr('data-username');
-});
