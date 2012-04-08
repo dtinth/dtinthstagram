@@ -12,8 +12,9 @@ it look like a desktop app.
 Features
 --------
 
-* view your instagram feed, with likes and comments
-* like any photo on the feed
-* comment on any photo on the feed
-* click to zoom in
-* dock badge for fluid
+* view photos, likes and comments on your Instagram feed
+* like and comment on any photo you see
+* list view and grid view
+* click to zoom in to standard size
+* dock badge for Fluid
+* animation-heavy! :D :D :D
