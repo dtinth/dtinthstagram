@@ -53,14 +53,19 @@ function getFeed() {
 	return new HomeFeed();
 }
 
-function ClickWaiter(element) {
+
+function ElementWaiter(element, eventName) {
 	var that = {};
-	var onclick = function() {};
-	$(element).click(function() { onclick(); });
+	var trigger = function() {};
+	$(element).bind(eventName, function() { trigger(); });
 	that.wait = function() {
-		waitfor() { onclick = resume; }
+		waitfor() { trigger = resume; }
 	};
 	return that;
+}
+
+function ClickWaiter(element) {
+	return new ElementWaiter(element, 'click');
 }
 
 function RateLimitedInvoker(callback, timeout) {
@@ -100,6 +105,7 @@ function main() {
 	var feed = getFeed();
 	var view = new FeedView(feed);
 	view.renderTo('#main');
+	view.active = true;
 
 	if (view.feed) spawn view.feed.loadNext();
 	setInterval(function() {
@@ -225,7 +231,7 @@ function FeedLoader(baseURL) {
 			maxId = null;
 			url = null;
 		}
-		// res.data.splice(0, 2); // for debugging refresh button
+		// res.data.splice(0, 1); // for debugging refresh button
 		return handleResponse(res);
 	};
 	that.refresh = function() {
@@ -598,7 +604,6 @@ function FeedView(feed) {
 	that.feed = feed;
 	that.view.el.iconify();
 	that.view.title.text(feed.title);
-	that.view.loadMore.click(that.feed.loadNext).hide();
 
 	that.getTitleBar = function() {
 		return that.feed.getTitleBar();
@@ -658,6 +663,29 @@ function FeedView(feed) {
 			that.view.loadMore.show();
 		}
 	});
+	that.view.loadMore.hide();
+
+	spawn function() {
+		var waiter = new ClickWaiter(that.view.loadMore);
+		var scrollWaiter = new ElementWaiter(window, 'scroll');
+		var count = 0;
+		for (;;) {
+			waitfor {
+				waiter.wait();
+				count = 0;
+			} or {
+				for (;;) {
+					scrollWaiter.wait();
+					if (count < 3 && window.scrollY + window.innerHeight > document.body.offsetHeight - 150) {
+						count ++;
+						break;
+					}
+				}
+			}
+			that.feed.loadNext();
+			hold(500);
+		}
+	}();
 
 
 	// refreshing indicator
@@ -749,7 +777,6 @@ function MediaCollectionView(template, feed) {
 	var that = new View(template);
 
 	that.feed = feed;
-	that.active = true;
 	that.setParentView = function(parentView) {
 		that.parentView = parentView;
 	};
@@ -845,7 +872,11 @@ function MediaGridView(feed) {
 		that.view.el.append(showList(nextData));
 	});
 	
+	var hasMarker = false;
+
 	that.feed.on('prepend', function(newData) {
+		var el = that.view.el.find('.grid-item').eq(0);
+		var oldTop = el.find('.image').offset().top;
 		that.view.el.prepend(showList(newData));
 		nextColumn = 0;
 		that.view.el.find('.grid-item').each(function() {
@@ -853,6 +884,30 @@ function MediaGridView(feed) {
 			$(this).attr('data-column', nextColumn).addClass('wtf').removeClass('wtf'); // wtf
 			nextColumn = (nextColumn + 1) % 4;
 		});
+		if (that.active) {
+			if (!hasMarker) {
+				if (el.attr('data-column') != '0') {
+					hasMarker = true;
+					el.addClass('new-mark');
+					spawn function() {
+						hold(1);
+						el.addClass('marker');
+						for (;;) {
+							hold(1000);
+							if (window.scrollY < el.offset().top - 150) {
+								break;
+							}
+						}
+						hasMarker = false;
+						el.removeClass('new-mark');
+						hold(1000);
+						el.removeClass('marker');
+					}();
+				}
+			}
+			var newTop = el.find('.image').offset().top;
+			window.scrollBy(0, newTop - oldTop);
+		}
 	});
 
 	return that;

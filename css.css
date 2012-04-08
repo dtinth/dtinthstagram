@@ -267,6 +267,10 @@ a img { border: 0; }
 	width: 150px; height: 150px;
 }
 .grid-item[data-column="0"] .grid-box { margin-top: 0; }
+.grid-item.new-mark[data-column] .grid-box { margin-top: 0; }
+.grid-item.marker[data-column] .grid-box {
+	-moz-transition: 1s margin-top;
+	-webkit-transition: 1s margin-top; }
 .grid-item[data-column="1"] .thumbnail { margin-top: 0; left: 154px; }
 .grid-item[data-column="2"] .thumbnail { margin-top: 0; left: 308px; }
 .grid-item[data-column="3"] .thumbnail { margin-top: 0; left: 462px; }
