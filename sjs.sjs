@@ -53,6 +53,42 @@ function getFeed() {
 	return new HomeFeed();
 }
 
+function RateLimitedInvoker(callback) {
+	var that = {};
+	var lastTime = null;
+	var timer = null;
+	function fire() {
+		var now = new Date().getTime();
+		timer = null;
+		callback();
+	}
+	function setTimer(now, timeToCall) {
+		if (timer != null) timer.cancel();
+		timer = {
+			id: setTimeout(fire, Math.max(0, timeToCall - now)),
+			cancel: function() {
+				clearTimeout(this.id);
+			}
+		};
+	}
+	that.invoke = function(minDelay) {
+		var now = new Date().getTime();
+		if (timer != null) {
+			var timeToCall = lastTime + minDelay;
+			if (timeToCall < timer.timeToCall) {
+				setTimer(now, timeToCall);
+			}
+		} else if (lastTime == null || now - lastTime >= minDelay) {
+			lastTime = now;
+			callback();
+		} else {
+			var timeToCall = lastTime + minDelay;
+			setTimer(now, timeToCall);
+		}
+	};
+	return that;
+}
+
 function main() {
 	if (!ACCESS_TOKEN) {
 		return authenticationNeeded();
@@ -115,19 +151,16 @@ function main() {
 			document.title = '(' + count + ') ' + titleBase;
 		}
 	}
-	var lastUpdateUnseen = 0;
 	function updateUnseen() {
 		var unseen = view.getUnseen();
-		lastUpdateUnseen = new Date().getTime();
 		setUnseen(unseen);
-		setTimeout(updateUnseen, 1500);
 	}
+	var updateUnseenDelayedInvoker = new RateLimitedInvoker(updateUnseen);
 	$(window).bind('scroll', function() {
-		if (new Date().getTime() - lastUpdateUnseen > 150) {
-			updateUnseen();
-		}
+		updateUnseenDelayedInvoker.invoke(150);
 	});
 	updateUnseen();
+	setInterval(updateUnseen, 1500);
 
 }
 
@@ -575,14 +608,17 @@ function FeedView(feed) {
 		animation(200, function(x) {
 			setOpacity(1 - x);
 		});
-		setOpacity(1);
+		return function() {
+			setOpacity(1);
+		};
 	}
 
 	that.view.contents.append(showList(that.feed.list));
 	that.feed.on('append', function(nextData) {
-		fadeAndShow([that.view.footer[0]]);
+		var show = fadeAndShow([that.view.footer[0]]);
 		var changeset = showList(nextData);
 		that.view.contents.append(changeset);
+		show();
 		animation(600, function(x) {
 			var top = Math.round(window.innerHeight * Math.pow(1 - x, 2));
 			changeset.css('top', top + 'px');
@@ -592,11 +628,12 @@ function FeedView(feed) {
 	that.feed.on('prepend', function(newData) {
 		var el = that.view.contents.find('.picture').eq(0);
 		var changeset = showList(newData);
-		fadeAndShow([that.view.head[0], document.getElementById('head')]);
+		var show = fadeAndShow([that.view.head[0], document.getElementById('head')]);
 		var oldTop = el.offset().top;
 		that.view.contents.prepend(changeset);
 		var newTop = el.offset().top;
 		window.scrollBy(0, newTop - oldTop);
+		show();
 		animation(600, function(x) {
 			var top = Math.round(-window.innerHeight * Math.pow(1 - x, 2));
 			changeset[0].style.top = top + 'px';
