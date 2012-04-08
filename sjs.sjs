@@ -77,13 +77,41 @@ function main() {
 	}, 60000);
 
 	// unseen count
+	var fluidHoster = window;
+	var fluidIframe = null;
+	var fluidQueuedText = null;
+	function setDockBadge(text) {
+		if ('fluid' in window) {
+			try {
+				if (fluidHoster == null) {
+					fluidQueuedText = text;
+				} else {
+					fluidHoster.fluid.dockBadge = text;
+				}
+			} catch (e) {
+				fluidHoster = null;
+				fluidQueuedText = text;
+				if (fluidIframe != null && fluidIframe.parentNode) {
+					fluidIframe.parentNode.removeChild(fluidIframe);
+				}
+				var iframe = fluidIframe = document.createElement('iframe');
+				iframe.onload = function() {
+					fluidHoster = iframe.contentWindow;
+					fluidHoster.fluid.dockBadge = fluidQueuedText;
+				};
+				iframe.src = 'about:blank';
+				iframe.style.display = 'none';
+				document.body.appendChild(iframe);
+			}
+		}
+	}
 	function setUnseen(count) {
 		var titleBase = view.getTitleBar() + '@' + me.username + ' - ' + APP_NAME;
 		if (count == 0) {
-			if (window.fluid) window.fluid.dockBadge = '';
+			setDockBadge('');
 			document.title = titleBase;
 		} else {
-			if (window.fluid) window.fluid.dockBadge = count;
+			setDockBadge(count);
 			document.title = '(' + count + ') ' + titleBase;
 		}
 	}
