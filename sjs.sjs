@@ -886,10 +886,10 @@ function MediaGridView(feed) {
 		that.view.el.append(showList(nextData));
 	});
 	
-	var hasMarker = false;
+	var markerElement = null;
 
 	that.feed.on('prepend', function(newData) {
-		var el = that.view.el.find('.grid-item').eq(0);
+		var el = markerElement == null ? that.view.el.find('.grid-item').eq(0) : markerElement;
 		var oldTop = el.find('.image').offset().top;
 		that.view.el.prepend(showList(newData));
 		nextColumn = 0;
@@ -899,9 +899,9 @@ function MediaGridView(feed) {
 			nextColumn = (nextColumn + 1) % 4;
 		});
 		if (that.active) {
-			if (!hasMarker) {
+			if (markerElement == null) {
 				if (el.attr('data-column') != '0') {
-					hasMarker = true;
+					markerElement = el;
 					el.addClass('new-mark');
 					spawn function() {
 						hold(1);
@@ -912,7 +912,7 @@ function MediaGridView(feed) {
 								break;
 							}
 						}
-						hasMarker = false;
+						markerElement = null;
 						el.removeClass('new-mark');
 						hold(1000);
 						el.removeClass('marker');
