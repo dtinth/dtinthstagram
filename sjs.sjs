@@ -2,8 +2,10 @@
 var http = require('apollo:http');
 var ACCESS_TOKEN = localStorage.instagramAccessToken;
 var CLIENT_ID = '99fd011a2cad4223a3b2bc48b4d2ab17';
+var DEBUG_MODE = false;
 if (location.href.match(/:8000/i)) {
 	CLIENT_ID = 'd2f6987697f04bf9a99d0d98b7efa860';
+	DEBUG_MODE = true;
 }
 var API_BASE = 'https://api.instagram.com/v1';
 var CORS_BASE = 'https://corstagram.appspot.com/v1';
@@ -621,6 +623,15 @@ function FeedView(feed) {
 	};
 
 
+	// debug mode: pressing p prepends
+	/*
+	$(window).keypress(function(e) {
+		if (e.charCode == 'p'.charCodeAt(0)) {
+			that.feed.prepend(that.feed.get(0));
+		}
+	});
+	*/
+
 	// user info, if available
 	
 	var userInfoView = null;
@@ -894,7 +905,6 @@ function MediaGridView(feed) {
 		that.view.el.prepend(showList(newData));
 		nextColumn = 0;
 		that.view.el.find('.grid-item').each(function() {
-			console.log($(this).attr('data-column'), nextColumn);
 			$(this).attr('data-column', nextColumn).addClass('wtf').removeClass('wtf'); // wtf
 			nextColumn = (nextColumn + 1) % 4;
 		});
@@ -919,6 +929,7 @@ function MediaGridView(feed) {
 					}();
 				}
 			}
+			that.parentView && that.parentView.calculatePositionTable && that.parentView.calculatePositionTable();
 			var newTop = el.find('.image').offset().top;
 			window.scrollBy(0, newTop - oldTop);
 		}
