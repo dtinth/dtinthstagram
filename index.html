@@ -16,7 +16,7 @@
 		<div id="head">
 			<h1>dtinthstagram</h1>
 		</div>
-		<div id="loading-stuff"><h2>loading stuff...</h2></div>
+		<div id="loading-stuff"><h2></h2></div>
 	</div>
 </div>
 
@@ -132,7 +132,7 @@
 
 var DEBUG_MODE = false;
 if (location.href.match(/:8000/i)) {
-	DEBUG_MODE = false;
+	DEBUG_MODE = true;
 }
 
 (function() {
@@ -187,6 +187,6 @@ jQuery.fn.tpl = function() {
 };
 </script>
 <script type="text/sjs">
-LoadingStuff.setStatus('loading main script...');
+//LoadingStuff.setStatus('loading main script...');
 require('./sjs.sjs');
 </script>
