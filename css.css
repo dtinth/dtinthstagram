@@ -67,6 +67,21 @@ h1 {
 .comment.comment-mention .user .username {
 	color: #ff9999;
 }
+.info a:hover,
+.left .user a:hover,
+.left .when a:hover {
+	background: #454443;
+	padding: 3px;
+	margin: -3px;
+}
+.info a:focus,
+.left .user a:focus,
+.left .when a:focus,
+.info a:active,
+.left .user a:active,
+.left .when a:active {
+	outline: 2px solid #555453;
+}
 .when {
 	color: #8b8685;
 	font-size: 0.8em; margin-right: 32px;
