@@ -208,6 +208,9 @@ h2 {
 	top: -32px; right: 0; height: 32px;
 	color: #8b8685;
 }
+#loading-stuff {
+	position: relative;
+}
 
 .changeset {
 	position: relative;

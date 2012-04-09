@@ -2,14 +2,12 @@
 var http = require('apollo:http');
 var ACCESS_TOKEN = localStorage.instagramAccessToken;
 var CLIENT_ID = '99fd011a2cad4223a3b2bc48b4d2ab17';
-var DEBUG_MODE = false;
-if (location.href.match(/:8000/i)) {
-	CLIENT_ID = 'd2f6987697f04bf9a99d0d98b7efa860';
-	DEBUG_MODE = true;
-}
 var API_BASE = 'https://api.instagram.com/v1';
 var CORS_BASE = 'https://corstagram.appspot.com/v1';
-//CORS_BASE = 'http://localhost:8080/v1';//!!!!!!!!!!!!
+
+if (location.href.match(/:8000/i)) {
+	CLIENT_ID = 'd2f6987697f04bf9a99d0d98b7efa860';
+}
 
 var APP_NAME = 'dtinthstagram';
 var me;
@@ -43,6 +41,7 @@ function getFeed() {
 		return new UserFeed(m[1]);
 	}
 	if ((m = location.search.match(/u=(\w+)/))) {
+		LoadingStuff.setStatus('searching for user: ' + m[1]);
 		var res = api(API_BASE + '/users/search?q=' + m[1] + '&count=1');
 		for (var i = 0; i < res.data.length; i ++) {
 			if (res.data[i].username == m[1]) {
@@ -91,9 +90,12 @@ function RateLimitedInvoker(callback, timeout) {
 	return that;
 }
 function main() {
+
 	if (!ACCESS_TOKEN) {
 		return authenticationNeeded();
 	}
+
+	LoadingStuff.setStatus('loading user data...');
 	try {
 		var res = api(API_BASE + '/users/self').data;
 		if (res == null) {
@@ -108,6 +110,7 @@ function main() {
 	var view = new FeedView(feed);
 	view.renderTo('#main');
 	view.active = true;
+	LoadingStuff.finish();
 
 	if (view.feed) spawn view.feed.loadNext();
 	setInterval(function() {
@@ -1235,6 +1238,7 @@ function user_html(user) {
 }
 
 function authenticationNeeded() {
+	LoadingStuff.finish();
 	var callbackURL = location.protocol + '//' + location.host + location.pathname.replace(/[^\/]*$/, '') + 'callback.html';
 	var redirectURL = 'https://instagram.com/oauth/authorize/?client_id=' + CLIENT_ID + '&redirect_uri=' + encodeURIComponent(callbackURL) + '&response_type=token&scope=likes+comments+relationships';
 	$('#auth-needed').tpl().el.appendTo('#main');

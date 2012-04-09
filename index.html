@@ -16,6 +16,7 @@
 		<div id="head">
 			<h1>dtinthstagram</h1>
 		</div>
+		<div id="loading-stuff"><h2>loading stuff...</h2></div>
 	</div>
 </div>
 
@@ -127,11 +128,38 @@
 		</div>
 	</div>
 </div>
-<script src="lib/raphael.js"></script>
-<script src="lib/jquery-1.7.2.js"></script>
-<script src="lib/underscore.js"></script>
-<script src="apollo/oni-apollo.js"></script>
 <script>
+
+var DEBUG_MODE = false;
+if (location.href.match(/:8000/i)) {
+	DEBUG_MODE = false;
+}
+
+(function() {
+
+	function loadScript(src) {
+		document.write('<script src="' + src + '"></scr' + 'ipt>');
+	}
+
+	loadScript(DEBUG_MODE ? 'lib/raphael.js' : 'https://raw.github.com/DmitryBaranovskiy/raphael/v2.1.0/raphael-min.js');
+	loadScript(DEBUG_MODE ? 'lib/jquery-1.7.2.js' : 'http://code.jquery.com/jquery-1.7.2.min.js');
+	loadScript(DEBUG_MODE ? 'lib/underscore.js' : 'https://raw.github.com/documentcloud/underscore/1.3.1/underscore-min.js');
+	loadScript(DEBUG_MODE ? 'apollo/oni-apollo.js' : 'http://code.onilabs.com/apollo/0.13/oni-apollo.js');
+
+})();
+
+</script>
+<script>
+
+var LoadingStuff = {
+	setStatus: function(text) {
+		$('#loading-stuff h2').text(text);
+	},
+	finish: function() {
+		$('#loading-stuff').hide();
+	}
+};
+
 jQuery.fn.iconify = function(size) {
 	$(this).find('[data-icon]').each(function() {
 		var width = $(this).width();
@@ -157,8 +185,8 @@ jQuery.fn.tpl = function() {
 	});
 	return o;
 };
-//$('#picture').tpl().el.appendTo('#main');
 </script>
 <script type="text/sjs">
+LoadingStuff.setStatus('loading main script...');
 require('./sjs.sjs');
 </script>
