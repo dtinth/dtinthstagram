@@ -328,3 +328,6 @@ a img { border: 0; }
 .grid-item.active .thumbnail {
 	opacity: 0.5;
 }
+.hidden-view {
+	display: none;
+}

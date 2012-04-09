@@ -35,15 +35,15 @@ function api(endpoint) {
 	return req(api_url(endpoint));
 }
 
-function getFeed() {
+function getFeed(params) {
 	var m;
-	if ((m = location.search.match(/uid=(\d+|self)/))) {
+	if ((m = params.match(/uid=(\d+|self)/))) {
 		return new UserFeed(m[1]);
 	}
-	if ((m = location.search.match(/tag=(\w+)/))) {
+	if ((m = params.match(/tag=(\w+)/))) {
 		return new TagFeed(m[1]);
 	}
-	if ((m = location.search.match(/u=(\w+)/))) {
+	if ((m = params.match(/u=(\w+)/))) {
 		LoadingStuff.setStatus('searching for user: ' + m[1]);
 		var res = api(API_BASE + '/users/search?q=' + m[1] + '&count=1');
 		for (var i = 0; i < res.data.length; i ++) {
@@ -92,6 +92,7 @@ function RateLimitedInvoker(callback, timeout) {
 	spawn worker();
 	return that;
 }
+
 function main() {
 
 	if (!ACCESS_TOKEN) {
@@ -109,16 +110,62 @@ function main() {
 		return authenticationNeeded();
 	}
 
-	var feed = getFeed();
-	var view = new FeedView(feed);
-	view.renderTo('#main');
-	view.active = true;
-	LoadingStuff.finish();
+	var manager = ViewManager.getInstance();
 
-	if (view.feed) spawn view.feed.loadNext();
-	setInterval(function() {
-		if (view.feed) view.feed.refresh();
-	}, 60000);
+	(function() {
+		var viewsMap = {};
+		var scrollPosMap = {};
+		var currentStateId = null;
+		function createViewId() {
+			return new Date() + ':' + Math.random();
+		}
+		function setState(state) {
+			var data = state.data;
+			window.console && console.log('current state', state.url);
+			if (state.data.viewId == null) {
+				state.data.viewId = createViewId();
+				History.replaceState(state.data, null, null);
+			}
+			var view = viewsMap[state.data.viewId];
+			if (view == null) {
+				var view = viewsMap[state.data.viewId] = new FeedView(getFeed(state.url));
+			}
+			manager.setActiveView(view);
+			if (state.id) {
+				currentStateId = state.id;
+				if (scrollPosMap[currentStateId] != null) {
+					var scrollPos = scrollPosMap[currentStateId];
+					window.scrollTo(scrollPos[0], scrollPos[1]);
+				}
+				saveScrolling();
+			}
+			manager.activeView.calculatePositionTable();
+			setTimeout(updateUnseen, 1);
+		}
+		function saveScrolling() {
+			if (currentStateId != null) {
+				scrollPosMap[currentStateId] = [ window.scrollX, window.scrollY ];
+			}
+		}
+		$(window).bind('scroll', saveScrolling);
+		setState(History.getState());
+		History.Adapter.bind(window, 'statechange', function() {
+			setState(History.getState());
+		});
+		function linkClicked(e) {
+			var data = { viewId: $(this).attr('href') };
+			var url = $(this).attr('href');
+			History.pushState(data, null, url);
+			setState({ data: data, url: url });
+			window.scrollTo(0, 0);
+		}
+		$('a[href^="?"]').live('click', function(e) {
+			spawn linkClicked.call(this, e);
+			return false;
+		});
+	})();
+
+	LoadingStuff.finish();
 
 	// unseen count
 	var fluidHoster = window;
@@ -150,7 +197,7 @@ function main() {
 		}
 	}
 	function setUnseen(count) {
-		var titleBase = view.getTitleBar() + '@' + me.username + ' - ' + APP_NAME;
+		var titleBase = manager.activeView.getTitleBar() + '@' + me.username + ' - ' + APP_NAME;
 		if (count == 0) {
 			setDockBadge('');
 			document.title = titleBase;
@@ -160,17 +207,17 @@ function main() {
 		}
 	}
 	function updateUnseen() {
-		var unseen = view.getUnseen();
+		var unseen = manager.activeView.getUnseen();
 		setUnseen(unseen);
 	}
 	var updateUnseenDelayedInvoker = new RateLimitedInvoker(updateUnseen, 100);
 	$(window).bind('scroll', function() {
 		updateUnseenDelayedInvoker.invoke();
 	});
-	view.calculatePositionTable();
+	manager.activeView.calculatePositionTable();
 	updateUnseen();
 	setInterval(function() {
-		view.calculatePositionTable();
+		manager.activeView.calculatePositionTable();
 		updateUnseen();
 	}, 1500);
 
@@ -213,6 +260,31 @@ function View(view) {
 	};
 	return that;
 }
+
+function ViewManager() {
+	var that = {};
+	that.activeView = null;
+	that.setActiveView = function(view) {
+		if (that.activeView == view) return;
+		if (that.activeView != null) {
+			try {
+				that.activeView.deactivate();
+			} catch (e) { window.console && console.error(e); }
+		}
+		that.activeView = view;
+		if (!view.insertedByViewManager) {
+			view.renderTo('#main');
+		}
+		view.insertedByViewManager = true;
+		view.activate();
+	};
+	return that;
+}
+
+ViewManager.getInstance = function() {
+	if (this._instance == null) this._instance = new ViewManager();
+	return this._instance;
+};
 
 function FeedLoader(baseURL) {
 	var that = {};
@@ -616,9 +688,27 @@ var Fx = {
 
 };
 
+function TopLevelView(el) {
+
+	var that = new View(el);
+	
+	that.active = false;
+	that.activate = function() {
+		that.active = true;
+		that.view.el.removeClass('hidden-view');
+	};
+	that.deactivate = function() {
+		that.active = false;
+		that.view.el.addClass('hidden-view');
+	};
+
+	return that;
+
+}
+
 function FeedView(feed) {
 
-	var that = new View($('#feed').tpl());
+	var that = new TopLevelView($('#feed').tpl());
 	
 	that.feed = feed;
 	that.view.el.iconify();
@@ -809,6 +899,39 @@ function FeedView(feed) {
 		}
 	}();
 
+	spawn that.feed.loadNext();
+
+
+	// auto refresh
+
+	var refreshTimer = null;
+	var lastRefreshTime = new Date().getTime();
+
+	function refreshFeed() {
+		lastRefreshTime = new Date().getTime();
+		spawn that.feed.refresh();
+		resetTimer(60000);
+	}
+
+	function resetTimer(fixedTime) {
+		clearTimeout(refreshTimer);
+		refreshTimer = setTimeout(refreshFeed, fixedTime);
+	}
+
+	that.activate = function(_super) {
+		return function() {
+			_super();
+			resetTimer(Math.max(500, 60000 - (new Date().getTime() - lastRefreshTime)));
+		};
+	}(that.activate);
+
+	that.deactivate = function(_super) {
+		return function() {
+			_super();
+			clearTimeout(refreshTimer);
+		};
+	}(that.deactivate);
+
 	return that;
 
 }
@@ -974,7 +1097,6 @@ function GridItemView(media) {
 			that.view.el.removeClass('active');
 			Fx.slideUp(that.view.large[0], 500);
 			waiter.wait();
-			console.log(':3');
 		}
 	}();
 
