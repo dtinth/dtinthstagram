@@ -40,6 +40,9 @@ function getFeed() {
 	if ((m = location.search.match(/uid=(\d+|self)/))) {
 		return new UserFeed(m[1]);
 	}
+	if ((m = location.search.match(/tag=(\w+)/))) {
+		return new TagFeed(m[1]);
+	}
 	if ((m = location.search.match(/u=(\w+)/))) {
 		LoadingStuff.setStatus('searching for user: ' + m[1]);
 		var res = api(API_BASE + '/users/search?q=' + m[1] + '&count=1');
@@ -490,6 +493,16 @@ function HomeFeed() {
 	var that = new Feed();
 	that.loader = new FeedLoader(api_url(API_BASE + '/users/self/feed'));
 	that.title = '/users/self/feed';
+	return that;
+}
+
+function TagFeed(tagName) {
+	var that = new Feed();
+	that.loader = new FeedLoader(api_url(API_BASE + '/tags/' + tagName + '/media/recent'));
+	that.title = '/tags/' + tagName + '/media/recent';
+	that.getTitleBar = function() {
+		return '[tag: ' + tagName + '] ';
+	};
 	return that;
 }
 
@@ -1133,6 +1146,18 @@ function MediaView(media) {
 
 	// comments
 
+	function format(html) {
+		return html.replace(/@(\w+)|#(\w+)/g, function(all, username, hashtag) {
+			if (username) {
+				return '<a href="?u=' + username + '">' + all + '</a>';
+			}
+			if (hashtag) {
+				return '<a href="?tag=' + hashtag + '">' + all + '</a>';
+			}
+			return all;
+		});
+	}
+
 	var commentsView = new CollectionView(media.comments);
 	commentsView.createView = function(comment) {
 		var commentView = new View($('#comment').tpl());
@@ -1141,7 +1166,7 @@ function MediaView(media) {
 		}
 		commentView.view.user.html(user_html(comment.from));
 		commentView.view.text.text(comment.text);
-		commentView.view.text.html(emoji.convert(commentView.view.text.html()));
+		commentView.view.text.html(emoji.convert(format(commentView.view.text.html())));
 		commentView.view.date.html(formatDate(comment.created));
 		return commentView;
 	};
