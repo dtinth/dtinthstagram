@@ -1090,10 +1090,13 @@ function GridItemView(media) {
 		var mediaView = new MediaView(media);
 		mediaView.renderTo(that.view.info);
 		that.view.large.show();
+		mediaView.view.leftSide.hide();
 		for (;;) {
 			that.view.el.addClass('active');
+			mediaView.view.leftSide.fadeIn();
 			Fx.slideDown(that.view.large[0], 500);
 			waiter.wait();
+			mediaView.view.leftSide.fadeOut();
 			that.view.el.removeClass('active');
 			Fx.slideUp(that.view.large[0], 500);
 			waiter.wait();
