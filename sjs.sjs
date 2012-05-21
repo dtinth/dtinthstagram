@@ -410,6 +410,7 @@ function Media(id) {
 	that.load = function(json) {
 		var user = UserFactory.fromJSON(json.user);
 		that.user = user;
+		that.filter = json.filter;
 		that.likes.merge(json.likes, function(c) {
 			return UserFactory.fromJSON(c);
 		});
@@ -1247,6 +1248,12 @@ function MediaView(media) {
 	view.image.click(function() {
 		view.el.toggleClass('zoomed');
 	});
+
+	if (media.filter != 'Normal') {
+		view.effectsName.text(media.filter);
+	} else {
+		view.effectsIcon.hide();
+	}
 
 	spawn function() {
 		waitfor() {

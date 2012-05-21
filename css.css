@@ -185,6 +185,25 @@ a {
 	text-align: center;
 	color: #8b8685;
 }
+.info .icon.icon2 {
+	top: 40px;
+}
+.info .icon.icon2 b {
+	display: none;
+	white-space: nowrap;
+	padding: 3px 5px;
+	background: #090807;
+	position: absolute;
+	line-height: 16px;
+	font-size: 11px;
+	font-weight: normal;
+	top: -2px;
+	left: 18px;
+	box-shadow: 2px 2px 0 rgba(0,0,0,0.2);
+}
+.info .icon.icon2:hover b {
+	display: block;
+}
 .info-data {
 	position: relative;
 	padding-left: 24px;
