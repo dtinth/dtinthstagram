@@ -222,32 +222,15 @@ function main() {
 
 }
 
-function EventEmitter() {
-	var that = {};
-	var list = {};
-	that.on = function(name, fn) {
-		var c = list[name] || (list[name] = []);
-		list[name].push(fn);
-	};
-	that.emit = function(name) {
-		var a = _.toArray(arguments).slice(1);
-		if (list[name]) {
-			for (var i = 0; i < list[name].length; i ++) {
-				spawn list[name][i].apply(that, a);
-			}
-		}
-	};
-	return that;
-}
-
 var unimplemented = function() { throw new Error('Unimplemented!'); };
 
-function View(view) {
+function View(dom) {
 
 	var that = {};
-	that.view = view;
+	that.dom = dom;
 
 	var rendered = false;
+
 	that.render = function() {
 	};
 
@@ -256,7 +239,7 @@ function View(view) {
 			that.render();
 			rendered = true;
 		}
-		that.view.el.appendTo(el);
+		that.dom.el.appendTo(el);
 		return that;
 	};
 
@@ -325,19 +308,19 @@ function FeedLoader(baseURL) {
 }
 
 function Collection() {
-	var that = new EventEmitter();
+	var that = _.extend({}, Backbone.Events);
 	that.list = [];
 	that.prepend = function() {
 		if (arguments.length == 0) return;
 		that.list.unshift.apply(that.list, arguments);
-		that.emit('prepend', _.toArray(arguments));
-		that.emit('change');
+		that.trigger('prepend', _.toArray(arguments));
+		that.trigger('change');
 	};
 	that.append = function() {
 		if (arguments.length == 0) return;
 		that.list.push.apply(that.list, arguments);
-		that.emit('append', _.toArray(arguments));
-		that.emit('change');
+		that.trigger('append', _.toArray(arguments));
+		that.trigger('change');
 	};
 	that.get = function(i) { return that.list[i]; };
 	that.set = function(i, v) { that.list[i] = v; };
@@ -376,11 +359,11 @@ function ResponseCollection() {
 			}
 		}
 		if (toRemove.length > 0) {
-			that.emit('remove', toRemove);
+			that.trigger('remove', toRemove);
 		}
 		that.append.apply(that.append, addition);
 		if (toRemove.length > 0 && addition.length == 0) {
-			that.emit('change');
+			that.trigger('change');
 		}
 	};
 	return that;
@@ -430,7 +413,7 @@ var Media = Backbone.Model.extend({
 
 	toggleLike: function() {
 		try {
-			this.trigger('startLike');
+			this.set('liking', true);
 			var target = !this.get('liked');
 			var res = (target ? post : del)(api_url(CORS_BASE + '/media/' + this.id + '/likes/'));
 			if (res.meta && res.meta.code == 200) {
@@ -438,7 +421,7 @@ var Media = Backbone.Model.extend({
 			}
 			return target;
 		} finally {
-			this.trigger('finishLike');
+			this.set('liking', false);
 		}
 	},
 
@@ -453,11 +436,11 @@ var Media = Backbone.Model.extend({
 
 	reload: function() {
 		try {
-			this.trigger('startReload');
+			this.set('reloading', true);
 			var media = api(API_BASE + '/media/' + this.id + '?now=' + new Date().getTime());
 			this.set(this.parse(media.data));
 		} finally {
-			this.trigger('finishReload');
+			this.set('reloading', false);
 		}
 	}
 
@@ -526,6 +509,7 @@ var UserFactory = new Factory(User);
 function Feed() {
 	var that = new Collection();
 	var map = {};
+	that.status = new Backbone.Model();
 	function getNewMedia(list) {
 		var addition = [];
 		for (var i = 0; i < list.length; i ++) {
@@ -542,7 +526,7 @@ function Feed() {
 	};
 	that.loadNext = function() {
 		try {
-			that.emit('startLoading');
+			that.status.set('loading', true);
 			var list = that.loader.loadNext();
 			var addition = getNewMedia(list);
 			if (addition.length > 0) {
@@ -550,7 +534,7 @@ function Feed() {
 			}
 			return addition.length;
 		} finally {
-			that.emit('finishLoading');
+			that.status.set('loading', false);
 		}
 	};
 	that.hasNext = function() {
@@ -558,14 +542,14 @@ function Feed() {
 	};
 	that.refresh = function() {
 		try {
-			that.emit('startRefreshing');
+			that.status.set('refreshing', true);
 			var list = that.loader.refresh();
 			var addition = getNewMedia(list);
 			if (addition.length > 0) {
 				that.prepend.apply(that.prepend, addition);
 			}
 		} finally {
-			that.emit('finishRefreshing');
+			that.status.set('refreshing', false);
 		}
 	};
 	return that;
@@ -604,7 +588,7 @@ function UserFeed(uid) {
 		var user = UserFactory.fromJSON(res.data);
 		that.userInfo = res.data;
 		that.user = user;
-		that.emit('userInfoLoaded');
+		that.trigger('userInfoLoaded');
 	}
 	that.userInfoStratum = spawn loadUserInfo();
 	return that;
@@ -618,11 +602,11 @@ function TopLevelView(el) {
 	that.active = false;
 	that.activate = function() {
 		that.active = true;
-		that.view.el.removeClass('hidden-view');
+		that.dom.el.removeClass('hidden-view');
 	};
 	that.deactivate = function() {
 		that.active = false;
-		that.view.el.addClass('hidden-view');
+		that.dom.el.addClass('hidden-view');
 	};
 
 	return that;
@@ -634,21 +618,21 @@ function FeedView(feed) {
 	var that = new TopLevelView($('#feed').tpl());
 	
 	that.feed = feed;
-	that.view.el.iconify();
-	that.view.title.text(feed.title);
+	that.dom.el.iconify();
+	that.dom.title.text(feed.title);
 
 	that.getTitleBar = function() {
 		return that.feed.getTitleBar();
 	};
 	that.add = function(view) {
-		view.renderTo(that.view.contents);
+		view.renderTo(that.dom.contents);
 		view.setParentView(that);
 	};
 	that.fadeHeader = function() {
-		return Fx.fadeOutAndShow([that.view.head[0], document.getElementById('head')]);
+		return Fx.fadeOutAndShow([that.dom.head[0], document.getElementById('head')]);
 	};
 	that.fadeFooter = function() {
-		return Fx.fadeOutAndShow([that.view.footer[0]]);
+		return Fx.fadeOutAndShow([that.dom.footer[0]]);
 	};
 
 
@@ -666,10 +650,10 @@ function FeedView(feed) {
 	var userInfoView = null;
 	function showUserInfo() {
 		userInfoView = new UserInfoView(that.feed.userInfo, that.feed.user);
-		userInfoView.renderTo(that.view.userInfo);
-		that.view.userInfo.slideDown('slow');
+		userInfoView.renderTo(that.dom.userInfo);
+		that.dom.userInfo.slideDown('slow');
 	}
-	that.view.userInfo.hide();
+	that.dom.userInfo.hide();
 
 	function userInfoWorker() {
 		waitfor() {
@@ -694,20 +678,8 @@ function FeedView(feed) {
 
 	// loading indicator
 
-	that.feed.on('startLoading', function() {
-		that.view.loading.show();
-		that.view.loadMore.hide();
-	});
-	that.feed.on('finishLoading', function() {
-		that.view.loading.hide();
-		if (that.feed.hasNext()) {
-			that.view.loadMore.show();
-		}
-	});
-	that.view.loadMore.hide();
-
 	spawn function() {
-		var waiter = new ClickWaiter(that.view.loadMore);
+		var waiter = new ClickWaiter(that.dom.loadMore);
 		var scrollWaiter = new ElementWaiter(window, 'scroll');
 		var count = 0;
 		var cont = false;
@@ -743,23 +715,16 @@ function FeedView(feed) {
 
 
 	// refreshing indicator
-
-	var refreshing = false;
-	that.feed.on('startRefreshing', function() {
-		refreshing = true;
-		that.view.refresh.addClass('dim');
-	});
-	that.feed.on('finishRefreshing', function() {
-		refreshing = false;
-		that.view.refresh.removeClass('dim');
-	});
-	that.view.refresh.click(function() {
-		if (!refreshing) {
+	that.dom.refresh.click(function() {
+		if (!that.feed.status.get('refreshing')) {
 			that.feed.refresh();
 		}
 	});
 
-
+	binds(that.feed.status, that)
+		.showWhile('loading', that.dom.loading)
+		.hideWhile('loading', that.dom.loadMore)
+		.toggleClass('refreshing', that.dom.refresh, 'dim')
 
 	
 	var activeView = null;
@@ -804,7 +769,7 @@ function FeedView(feed) {
 		];
 		var views = {};
 		var currentMode = 0;
-		var waiter = new ClickWaiter(that.view.switchView);
+		var waiter = new ClickWaiter(that.dom.switchView);
 		for (;;) {
 			activeView = views[currentMode];
 			if (!activeView) {
@@ -876,7 +841,7 @@ function MediaListView(feed) {
 	var that = new MediaCollectionView($('#list-view').tpl(), feed);
 
 	that.getItemElements = function() {
-		return that.view.el.find('.image');
+		return that.dom.el.find('.image');
 	};
 
 	// appending and prepending media
@@ -891,15 +856,15 @@ function MediaListView(feed) {
 		return el;
 	}
 
-	that.view.el.append(showList(that.feed.list));
+	that.dom.el.append(showList(that.feed.list));
 	that.feed.on('append', function(nextData) {
 		var changeset = showList(nextData);
 		if (!that.active) {
-			that.view.el.append(changeset);
+			that.dom.el.append(changeset);
 			return;
 		}
 		var show = that.parentView && that.parentView.fadeFooter && that.parentView.fadeFooter();
-		that.view.el.append(changeset);
+		that.dom.el.append(changeset);
 		show && show();
 		Fx.animation(600, function(x) {
 			var top = Math.round(window.innerHeight * Math.pow(1 - x, 2));
@@ -911,14 +876,14 @@ function MediaListView(feed) {
 	that.feed.on('prepend', function(newData) {
 		var changeset = showList(newData);
 		if (!that.active) {
-			that.view.el.prepend(changeset);
+			that.dom.el.prepend(changeset);
 			return;
 		}
-		var el = that.view.el.find('.picture').eq(0);
+		var el = that.dom.el.find('.picture').eq(0);
 		var show = that.parentView && that.parentView.fadeHeader && that.parentView.fadeHeader();
 		var oldTop = el.offset().top;
 		changeset.css('visibility', 'hidden');
-		that.view.el.prepend(changeset);
+		that.dom.el.prepend(changeset);
 		var newTop = el.offset().top;
 		window.scrollBy(0, newTop - oldTop);
 		show && show();
@@ -938,7 +903,7 @@ function MediaGridView(feed) {
 	var that = new MediaCollectionView($('#grid-view').tpl(), feed);
 
 	that.getItemElements = function() {
-		return that.view.el.find('.grid-item');
+		return that.dom.el.find('.grid-item');
 	};
 
 	// appending and prepending media
@@ -954,19 +919,19 @@ function MediaGridView(feed) {
 		return el;
 	}
 
-	that.view.el.append(showList(that.feed.list));
+	that.dom.el.append(showList(that.feed.list));
 	that.feed.on('append', function(nextData) {
-		that.view.el.append(showList(nextData));
+		that.dom.el.append(showList(nextData));
 	});
 	
 	var markerElement = null;
 
 	that.feed.on('prepend', function(newData) {
-		var el = markerElement == null ? that.view.el.find('.grid-item').eq(0) : markerElement;
+		var el = markerElement == null ? that.dom.el.find('.grid-item').eq(0) : markerElement;
 		var oldTop = el.find('.image').offset().top;
-		that.view.el.prepend(showList(newData));
+		that.dom.el.prepend(showList(newData));
 		nextColumn = 0;
-		that.view.el.find('.grid-item').each(function() {
+		that.dom.el.find('.grid-item').each(function() {
 			$(this).attr('data-column', nextColumn).addClass('wtf').removeClass('wtf'); // wtf
 			nextColumn = (nextColumn + 1) % 4;
 		});
@@ -1004,24 +969,24 @@ function MediaGridView(feed) {
 function GridItemView(media) {
 
 	var that = new View($('#grid-item').tpl());
-	that.view.image.append(Fx.image(media.get('images').thumbnail.url));
+	that.dom.image.append(Fx.image(media.get('images').thumbnail.url));
 
 	spawn function() {
-		var waiter = new ClickWaiter(that.view.image);
-		that.view.large.hide();
+		var waiter = new ClickWaiter(that.dom.image);
+		that.dom.large.hide();
 		waiter.wait();
 		var mediaView = new MediaView(media);
-		mediaView.renderTo(that.view.info);
-		that.view.large.show();
+		mediaView.renderTo(that.dom.info);
+		that.dom.large.show();
 		mediaView.view.leftSide.hide();
 		for (;;) {
-			that.view.el.addClass('active');
+			that.dom.el.addClass('active');
 			mediaView.view.leftSide.fadeIn();
-			Fx.slideDown(that.view.large[0], 500);
+			Fx.slideDown(that.dom.large[0], 500);
 			waiter.wait();
 			mediaView.view.leftSide.fadeOut();
-			that.view.el.removeClass('active');
-			Fx.slideUp(that.view.large[0], 500);
+			that.dom.el.removeClass('active');
+			Fx.slideUp(that.dom.large[0], 500);
 			waiter.wait();
 		}
 	}();
@@ -1068,7 +1033,7 @@ function CollectionView(collection) {
 		for (var i = 0; i < all.length; i ++) {
 			var c = all[i];
 			if (!nextMap[c.id]) {
-				that.view.el.append(c.el);
+				that.dom.el.append(c.el);
 				if (animationEnabled) {
 					spawn Fx.slideUp(c.el[0], null, true);
 				} else {
@@ -1078,12 +1043,12 @@ function CollectionView(collection) {
 				c.el = $('<div class="collectionview-item"></div>');
 				c.view = that.createView(c.item);
 				c.view.renderTo(c.el);
-				that.view.el.append(c.el);
+				that.dom.el.append(c.el);
 				if (animationEnabled) {
 					spawn Fx.slideDown(c.el[0]);
 				}
 			} else {
-				that.view.el.append(c.el);
+				that.dom.el.append(c.el);
 			}
 		}
 	}
@@ -1100,25 +1065,25 @@ function CollectionView(collection) {
 function AddCommentView(feed) {
 
 	var that = new View($('#add-comment').tpl());
-	that.view.pointer.each(function() {
+	that.dom.pointer.each(function() {
 		var paper = Raphael(this, 12, 12);
 		paper.path('M 14 -1 M 10.5 -1 l 0 2 l -5 5 l 5 5 l 0 2 L 14 13')
 			.attr({ 'stroke': '#454443', 'fill': '#090807' });
 	});
-	that.view.user.html(user_html(me));
-	that.view.el.hide();
+	that.dom.user.html(user_html(me));
+	that.dom.el.hide();
 
 	var showing = false;
 	that.hide = function() {
 		if (!showing) return;
 		showing = false;
-		that.view.el.hide('fast');
+		that.dom.el.hide('fast');
 	};
 	that.show = function() {
 		if (showing) return;
 		showing = true;
-		that.view.el.show('fast');
-		that.view.textarea[0].focus();
+		that.dom.el.show('fast');
+		that.dom.textarea[0].focus();
 	};
 	that.toggle = function() {
 		if (showing) {
@@ -1127,24 +1092,24 @@ function AddCommentView(feed) {
 			that.show();
 		}
 	};
-	that.events = new EventEmitter();
+	that.events = _.extend({}, Backbone.Events);
 
-	that.view.textarea.keydown(function(e) {
+	that.dom.textarea.keydown(function(e) {
 		if (e.keyCode == 13) {
-			that.events.emit('enter');
+			that.events.trigger('enter');
 			return false;
 		}
 	});
 	that.getText = function() {
-		return that.view.textarea[0].value;
+		return that.dom.textarea[0].value;
 	};
 	that.disable = function() {
-		that.view.textarea[0].disabled = true;
-		that.view.el.addClass('dim');
+		that.dom.textarea[0].disabled = true;
+		that.dom.el.addClass('dim');
 	};
 	that.enable = function() {
-		that.view.textarea[0].disabled = false;
-		that.view.el.removeClass('dim');
+		that.dom.textarea[0].disabled = false;
+		that.dom.el.removeClass('dim');
 	};
 	return that;
 
@@ -1153,36 +1118,36 @@ function AddCommentView(feed) {
 function MediaView(media) {
 
 	var that = new View($('#picture').tpl());
-	var view = that.view;
+	var dom = that.dom;
 
 
 	// user
 
-	view.user.html(user_html(media.get('user')));
-	view.picture.append('<a href="' + user_url(media.get('user')) + '"><img src="' + media.get('user').get('profilePicture') + '" alt=""></a>');
-	view.date.html('<a href="' + media.get('link') + '">' + formatDate(media.get('created')) + '</a>');
+	dom.user.html(user_html(media.get('user')));
+	dom.picture.append('<a href="' + user_url(media.get('user')) + '"><img src="' + media.get('user').get('profilePicture') + '" alt=""></a>');
+	dom.date.html('<a href="' + media.get('link') + '">' + formatDate(media.get('created')) + '</a>');
 
 
 	// image
 	
-	var lowResImage = Fx.image(media.get('images').low_resolution.url).appendTo(view.image);
+	var lowResImage = Fx.image(media.get('images').low_resolution.url).appendTo(dom.image);
 
-	view.image.click(function() {
-		view.el.toggleClass('zoomed');
+	dom.image.click(function() {
+		dom.el.toggleClass('zoomed');
 	});
 
 	if (media.get('filter') != 'Normal') {
-		view.effectsName.text(media.get('filter'));
+		dom.effectsName.text(media.get('filter'));
 	} else {
-		view.effectsIcon.hide();
+		dom.effectsIcon.hide();
 	}
 
 	spawn function() {
 		waitfor() {
-			view.image.one('click', resume);
+			dom.image.one('click', resume);
 		}
 		lowResImage[0].className = 'dim';
-		Fx.image(media.images.standard_resolution.url).appendTo(view.image);
+		Fx.image(media.get('images').standard_resolution.url).appendTo(dom.image);
 	}();
 
 
@@ -1193,9 +1158,9 @@ function MediaView(media) {
 		var place = location.latitude + ', ' + location.longitude;
 		var placeName = place;
 		if (location.name) placeName = location.name;
-		view.geo.html('<a href="http://maps.google.com/?q=' + encodeURIComponent(place) + '">' + placeName + '</a>');
+		dom.geo.html('<a href="http://maps.google.com/?q=' + encodeURIComponent(place) + '">' + placeName + '</a>');
 	} else {
-		view.geoContainer.hide();
+		dom.geoContainer.hide();
 	}
 
 
@@ -1217,22 +1182,22 @@ function MediaView(media) {
 	commentsView.createView = function(comment) {
 		var commentView = new View($('#comment').tpl());
 		if (comment.isMention()) {
-			commentView.view.el.addClass('comment-mention');
+			commentView.dom.el.addClass('comment-mention');
 		}
-		commentView.view.user.html(user_html(comment.get('from')));
-		commentView.view.text.text(comment.get('text'));
-		commentView.view.text.html(emoji.convert(format(commentView.view.text.html())));
-		commentView.view.date.html(formatDate(comment.get('created')));
+		commentView.dom.user.html(user_html(comment.get('from')));
+		commentView.dom.text.text(comment.get('text'));
+		commentView.dom.text.html(emoji.convert(format(commentView.dom.text.html())));
+		commentView.dom.date.html(formatDate(comment.get('created')));
 		return commentView;
 	};
 	function updateCommentCount() {
-		view.commentCount.text(media.comments.count);
+		dom.commentCount.text(media.comments.count);
 	}
-	commentsView.renderTo(view.rows);
+	commentsView.renderTo(dom.rows);
 	updateCommentCount();
 	media.comments.on('change', updateCommentCount);
 	var addCommentView = null;
-	view.commentIcon.click(function() {
+	dom.commentIcon.click(function() {
 		if (addCommentView == null) {
 			addCommentView = new AddCommentView();
 			addCommentView.events.on('enter', function() {
@@ -1247,7 +1212,7 @@ function MediaView(media) {
 					addCommentView.enable();
 				}
 			});
-			addCommentView.renderTo(view.addComment);
+			addCommentView.renderTo(dom.addComment);
 		}
 		addCommentView.toggle();
 	});
@@ -1265,37 +1230,80 @@ function MediaView(media) {
 		if (media.likes.size() < media.likes.count) {
 			html += ', +' + (media.likes.count - media.likes.size()) + ' others';
 		}
-		view.likes.html(html);
-		view.likeCount.text(media.likes.count);
+		dom.likes.html(html);
+		dom.likeCount.text(media.likes.count);
 	}
 
 	showLikes();
-	view.el.iconify();
+	dom.el.iconify();
 	media.likes.on('change', showLikes);
 
 	function updateLike() {
-		view.likeIcon.data('icon').attr('fill', media.liked ? '#ffff99' : '#8b8685');
+		dom.likeIcon.data('icon').attr('fill', media.liked ? '#ffff99' : '#8b8685');
 	}
 	media.on('likeChanged', updateLike);
 	updateLike();
 
-	media.on('startLike', function() { view.likeIcon.addClass('dim'); });
-	media.on('finishLike', function() { view.likeIcon.removeClass('dim'); });
-	media.on('startReload', function() { view.right.addClass('dim'); });
-	media.on('finishReload', function() { view.right.removeClass('dim'); });
-	view.likeIcon.click(function() {
+	binds(media, that)
+		.toggleClass('liking', dom.likeIcon, 'dim')
+		.toggleClass('reloading', dom.right, 'dim')
+
+	dom.likeIcon.click(function() {
 		var target = media.toggleLike();
 		media.reload();
-		media.setLiked(target);
+		media.set('liked', target);
 	});
 
 	return that;
 
 }
 
+function binds(model, view) {
+	model.on('change', onchange)
+	var bindings = []
+	function bind(attribute, callback) {
+		bindings.push(function() {
+			if (model.hasChanged(attribute)) {
+				callback();
+			}
+		});
+		callback();
+		return this;
+	}
+	function onchange() {
+		for (var i = 0; i < bindings.length; i ++) {
+			bindings[i]()
+		}
+	}
+	return {
+		bind: bind,
+		toggle: function(attribute, on, off) {
+			return this.bind(attribute, function() {
+				if (model.get(attribute)) on(); else off();
+			});
+		},
+		toggleClass: function(attribute, el, className) {
+			return this.toggle(attribute,
+				function() { el.addClass(className); },
+				function() { el.removeClass(className); }
+			);
+		},
+		showWhile: function(attribute, el) {
+			return this.toggle(attribute,
+				function() { el.show(); },
+				function() { el.hide(); });
+		},
+		hideWhile: function(attribute, el) {
+			return this.toggle(attribute,
+				function() { el.hide(); },
+				function() { el.show(); });
+		},
+	}
+}
+
 function UserInfoView(userInfo, user) {
 	var that = new View($('#user-info').tpl());
-	that.view.picture.append('<img src="' + user.get('profilePicture') + '" alt="">');
+	that.dom.picture.append('<img src="' + user.get('profilePicture') + '" alt="">');
 	return that;
 }
 
