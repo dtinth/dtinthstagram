@@ -228,11 +228,25 @@ var unimplemented = function() { throw new Error('Unimplemented!'); };
 
 function View(dom) {
 
-	var that = {};
+	var that = _.extend({}, Backbone.Events);
 	that.dom = dom;
+	that.id = View.generateId();
+	
+	that.subviews = {};
+	that.parentView = null;
+	that.register = function(subview) {
+		if (that.parentView) that.parentView.unregister(that);
+		that.subviews[subview.id] = subview;
+		subview.parentView = that;
+		return that;
+	};
+	that.unregister = function(subview) {
+		delete that.subviews[subview.id];
+		subview.parentView = null;
+		return that;
+	};
 
 	var rendered = false;
-
 	that.render = function() {
 	};
 
@@ -245,9 +259,17 @@ function View(dom) {
 		return that;
 	};
 
+	that.destroy = function() {
+	};
 	return that;
-
 }
+
+View.generateId = (function() {
+	var next = 0;
+	return function() {
+		return ':' + (next++);
+	};
+})();
 
 function ViewManager() {
 	var that = {};
@@ -627,8 +649,8 @@ function FeedView(feed) {
 		return that.feed.getTitleBar();
 	};
 	that.add = function(view) {
+		that.register(view)
 		view.renderTo(that.dom.contents);
-		view.setParentView(that);
 	};
 	that.fadeHeader = function() {
 		return Fx.fadeOutAndShow([that.dom.head[0], document.getElementById('head')]);
@@ -831,9 +853,6 @@ function MediaCollectionView(template, feed) {
 	var that = new View(template);
 
 	that.feed = feed;
-	that.setParentView = function(parentView) {
-		that.parentView = parentView;
-	};
 	return that;
 
 }
@@ -1122,6 +1141,7 @@ function MediaView(media) {
 	var that = new View($('#picture').tpl());
 	var dom = that.dom;
 
+	var binder = binds(media, that);
 
 	// user
 
@@ -1244,7 +1264,7 @@ function MediaView(media) {
 		dom.likeIcon.data('icon').attr('fill', media.get('liked') ? '#ffff99' : '#8b8685');
 	}
 
-	binds(media, that)
+	binder
 		.toggleClass('liking', dom.likeIcon, 'dim')
 		.toggleClass('reloading', dom.right, 'dim')
 		.bind('liked', updateLike)
