@@ -16,7 +16,7 @@
 		<div id="head">
 			<h1>dtinthstagram</h1>
 		</div>
-		<div id="loading-stuff"><h2></h2></div>
+		<div id="loading-stuff" class="feed-header"><h2></h2></div>
 	</div>
 </div>
 
@@ -25,20 +25,24 @@
 </div>
 
 <div class="template feed" id="feed">
-	<h2 data-role="head">
-		<span data-role="title">(feed title)</span>
-		<span data-role="refresh"
-			data-icon="M24.083,15.5c-0.009,4.739-3.844,8.574-8.583,8.583c-4.741-0.009-8.577-3.844-8.585-8.583c0.008-4.741,3.844-8.577,8.585-8.585c1.913,0,3.665,0.629,5.09,1.686l-1.782,1.783l8.429,2.256l-2.26-8.427l-1.89,1.89c-2.072-1.677-4.717-2.688-7.587-2.688C8.826,3.418,3.418,8.826,3.416,15.5C3.418,22.175,8.826,27.583,15.5,27.583S27.583,22.175,27.583,15.5H24.083z"
-			data-transform="t -15 -16 t 12 12 s 0.6 0.6"
-			data-width="24" data-height="24"
-			class="refresh-button"></span>
-		<span data-role="switchView"
-			data-icon="M 12 11 m -8 -8 l 16 0 l 0 16 l -16 0 l 0 -16
-				m 2 2 l 0 12 l 12 0 l 0 -12 l -12 0"
-			data-transform="T -12 -11 s 0.9 0.9 T 12 11.6"
-			data-width="24" data-height="24"
-			class="switch-view-button"></span>
-	</h2>
+	<div class="feed-header" data-role="head">
+		<h2>
+			<span data-role="title">(feed title)</span>
+			<span data-role="refresh"
+				data-icon="M24.083,15.5c-0.009,4.739-3.844,8.574-8.583,8.583c-4.741-0.009-8.577-3.844-8.585-8.583c0.008-4.741,3.844-8.577,8.585-8.585c1.913,0,3.665,0.629,5.09,1.686l-1.782,1.783l8.429,2.256l-2.26-8.427l-1.89,1.89c-2.072-1.677-4.717-2.688-7.587-2.688C8.826,3.418,3.418,8.826,3.416,15.5C3.418,22.175,8.826,27.583,15.5,27.583S27.583,22.175,27.583,15.5H24.083z"
+				data-transform="t -15 -16 t 12 12 s 0.6 0.6"
+				data-width="24" data-height="24"
+				class="refresh-button"></span>
+			<span data-role="switchView"
+				data-icon="M 12 11 m -8 -8 l 16 0 l 0 16 l -16 0 l 0 -16
+					m 2 2 l 0 12 l 12 0 l 0 -12 l -12 0"
+				data-transform="T -12 -11 s 0.9 0.9 T 12 11.6"
+				data-width="24" data-height="24"
+				class="switch-view-button"></span>
+		</h2>
+		<div class="breadcrumb" data-role="breadcrumb">
+		</div>
+	</div>
 	<div data-role="userInfo"></div>
 	<div data-role="contents"></div>
 	<div data-role="footer">

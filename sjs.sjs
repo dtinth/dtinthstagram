@@ -94,6 +94,114 @@ function RateLimitedInvoker(callback, timeout) {
 	return that;
 }
 
+var HistoryState = Backbone.Model.extend({
+	destroy: function() {
+		this.trigger('destroy');
+		this.off();
+	}
+});
+
+function StateManager(onstate) {
+
+	var that = _.extend({}, Backbone.Events);
+
+	var pool = {};
+	var currentState = null;
+
+	function getState(data) {
+		if (pool[data.id]) return pool[data.id];
+		var state = new HistoryState(data);
+		onstate(state);
+		return state;
+	}
+
+	function handle(data, url) {
+
+		var exception;
+
+		if (data == null) {
+			var state = new HistoryState({
+				id: createID(),
+				breadcrumb:
+					currentState && currentState.get('breadcrumb')
+					? currentState.get('breadcrumb').concat(
+						[currentState.get('id')])
+					: []
+			});
+			onstate(state, currentState);
+		} else {
+			var state = getState(data);
+		}
+		pool[state.id] = state;
+
+		if (currentState) {
+			currentState.trigger('deactivate');
+			currentState.off('change', replaceState);
+			exception = currentState.id;
+		}
+
+		currentState = state;
+		currentState.trigger('activate', url);
+		currentState.on('change', replaceState);
+		replaceState();
+
+		pruneOldStates({ exceptions: [ exception ] });
+
+	}
+
+	function pruneOldStates(options) {
+		var map = {};
+		function except(list) {
+			for (var i = 0; i < list.length; i ++) {
+				map[list[i]] = true;
+			}
+		}
+		except([currentState.id]);
+		except(currentState.get('breadcrumb'));
+		if (options.exceptions) except(options.exceptions);
+		for (var i in pool) {
+			if (pool.hasOwnProperty(i)) {
+				if (!map.hasOwnProperty(i)) {
+					pool[i].destroy();
+					delete pool[i];
+				}
+			}
+		}
+	}
+
+	function replaceState() {
+		if (window.console && console.log) {
+			console.log(JSON.stringify(currentState.toJSON()));
+		}
+		history.replaceState(currentState.toJSON(), null);
+	}
+
+	var nextID = 0;
+	function createID() {
+		return ':' + (nextID++) + ':' + new Date().getTime();
+	}
+
+	function go(url) {
+		history.pushState(null, null, url);
+		handle(history.state, location.search);
+	}
+
+	handle(history.state, location.search);
+
+	window.addEventListener('popstate', function(e) {
+		handle(e.state, location.search);
+	}, false);
+
+	that.getCurrentState = function() {
+		return currentState;
+	};
+
+	that.go = go;
+
+	return that;
+
+}
+
 function main() {
 
 	if (!ACCESS_TOKEN) {
@@ -112,59 +220,43 @@ function main() {
 	}
 
 	var manager = ViewManager.getInstance();
+	var states = new StateManager(handleState);
 
-	(function() {
-		var viewsMap = {};
-		var scrollPosMap = {};
-		var currentStateId = null;
-		function createViewId() {
-			return new Date() + ':' + Math.random();
-		}
-		function setState(state) {
-			var data = state.data;
-			window.console && console.log('current state', state.url);
-			if (state.data.viewId == null) {
-				state.data.viewId = createViewId();
-				History.replaceState(state.data, null, null);
-			}
-			var view = viewsMap[state.data.viewId];
+	function handleState(state, parent) {
+		var view = null;
+		state.on('activate', function(url) {
 			if (view == null) {
-				var view = viewsMap[state.data.viewId] = new FeedView(getFeed(state.url));
+				var feed = getFeed(url);
+				view = new FeedView(feed, state.get('nav'));
+				state.set('title', feed.title);
 			}
 			manager.setActiveView(view);
-			if (state.id) {
-				currentStateId = state.id;
-				if (scrollPosMap[currentStateId] != null) {
-					var scrollPos = scrollPosMap[currentStateId];
-					window.scrollTo(scrollPos[0], scrollPos[1]);
-				}
-				saveScrolling();
-			}
-			manager.activeView.calculatePositionTable();
-			setTimeout(updateUnseen, 1);
-		}
-		function saveScrolling() {
-			if (currentStateId != null) {
-				scrollPosMap[currentStateId] = [ window.scrollX, window.scrollY ];
+		});
+		state.on('deactivate', function(url) {
+		});
+		state.on('destroy', function() {
+			view.destroy();
+			view = null;
+		});
+		function handleParent() {
+			var nav = parent.get('nav');
+			if (nav && nav.concat) {
+				state.set('nav', nav.concat([parent.get('title')]));
 			}
 		}
-		$(window).bind('scroll', saveScrolling);
-		setState(History.getState());
-		History.Adapter.bind(window, 'statechange', function() {
-			setState(History.getState());
-		});
-		function linkClicked(e) {
-			var data = { viewId: $(this).attr('href') };
-			var url = $(this).attr('href');
-			History.pushState(data, null, url);
-			setState({ data: data, url: url });
-			window.scrollTo(0, 0);
-		}
-		$('a[href^="?"]').live('click', function(e) {
-			spawn linkClicked.call(this, e);
-			return false;
-		});
-	})();
+		if (parent) handleParent();
+		if (!state.get('nav')) state.set('nav', []);
+	}
+
+	function linkClicked(e) {
+		var url = $(this).attr('href');
+		states.go(url);
+	}
+
+	$('a[href^="?"]').live('click', function(e) {
+		spawn linkClicked.call(this, e);
+		return false;
+	});
 
 	LoadingStuff.finish();
 
@@ -197,6 +289,7 @@ function main() {
 			}
 		}
 	}
+
 	function setUnseen(count) {
 		var titleBase = manager.activeView.getTitleBar() + '@' + me.get('username') + ' - ' + APP_NAME;
 		if (count == 0) {
@@ -207,16 +300,22 @@ function main() {
 			document.title = '(' + count + ') ' + titleBase;
 		}
 	}
+
 	function updateUnseen() {
 		var unseen = manager.activeView.getUnseen();
 		setUnseen(unseen);
 	}
+
+	manager.on('activate', function(view) {
+		view.calculatePositionTable();
+		setTimeout(updateUnseen, 1);
+	});
+
 	var updateUnseenDelayedInvoker = new RateLimitedInvoker(updateUnseen, 100);
 	$(window).bind('scroll', function() {
 		updateUnseenDelayedInvoker.invoke();
 	});
-	manager.activeView.calculatePositionTable();
-	updateUnseen();
+
 	setInterval(function() {
 		manager.activeView.calculatePositionTable();
 		updateUnseen();
@@ -246,6 +345,28 @@ function View(dom) {
 		return that;
 	};
 
+	that.destroyed = false;
+	that.destroy = function() {
+		if (that.parentView) that.parentView.unregister(that);
+		that.detach();
+		for (var i in that.subviews) {
+			if (that.subviews.hasOwnProperty(i)) {
+				that.subviews[i].destroy();
+			}
+		}
+		that.trigger('destroy');
+		that.off();
+		that.destroyed = true;
+		that.dom = null;
+		that.subviews = null;
+	};
+
+	that.detach = function() {
+		if (that.dom.el) {
+			that.dom.el.remove();
+		}
+	};
+
 	var rendered = false;
 	that.render = function() {
 	};
@@ -259,8 +380,6 @@ function View(dom) {
 		return that;
 	};
 
-	that.destroy = function() {
-	};
 	return that;
 }
 
@@ -272,7 +391,7 @@ View.generateId = (function() {
 })();
 
 function ViewManager() {
-	var that = {};
+	var that = _.extend({}, Backbone.Events);
 	that.activeView = null;
 	that.setActiveView = function(view) {
 		if (that.activeView == view) return;
@@ -287,6 +406,7 @@ function ViewManager() {
 		}
 		view.insertedByViewManager = true;
 		view.activate();
+		that.trigger('activate', view);
 	};
 	return that;
 }
@@ -603,7 +723,7 @@ function UserFeed(uid) {
 	that.getTitleBar = function() {
 		if (!UserFactory.has(uid)) return '';
 		var user = UserFactory.get(uid);
-		return '[user: ' + user.username + '] ';
+		return '[user: ' + user.get('username') + '] ';
 	};
 	that.userInfo = null;
 	that.user = null;
@@ -637,13 +757,20 @@ function TopLevelView(el) {
 
 }
 
-function FeedView(feed) {
+function FeedView(feed, navigation) {
 
 	var that = new TopLevelView($('#feed').tpl());
 	
 	that.feed = feed;
 	that.dom.el.iconify();
 	that.dom.title.text(feed.title);
+
+	navigation.forEach(function(item, index) {
+		var el = $('<div class="breadcrumb-item"></div>').appendTo(that.dom.breadcrumb);
+		$('<span></span>').text(item).click(function() {
+			history.go(index - navigation.length);
+		}).appendTo(el);
+	});
 
 	that.getTitleBar = function() {
 		return that.feed.getTitleBar();

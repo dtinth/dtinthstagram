@@ -235,13 +235,24 @@ a {
 	opacity: 0.3;
 }
 
-h2 {
-	font: bold 16px/32px Helvetica, sans-serif;
-	margin: 0; padding: 0;
+.feed-header {
 	position: absolute;
 	top: -32px; right: 0; height: 32px;
+	text-align: left;
+}
+h2 {
+	text-align: right;
+	font: bold 16px/32px Helvetica, sans-serif;
+	margin: 0; padding: 0;
 	color: #8b8685;
 }
+.breadcrumb {
+	font: bold 16px/24px Helvetica, sans-serif;
+	position: absolute;
+	bottom: 32px; left: 0;
+}
+.breadcrumb-item span { color: #5b5655; cursor: pointer; }
+.breadcrumb-item span:hover { color: #7b7675; }
 #loading-stuff {
 	position: relative;
 }
