@@ -1000,7 +1000,7 @@ function MediaGridView(feed) {
 function GridItemView(media) {
 
 	var that = new View($('#grid-item').tpl());
-	that.view.image.append(Fx.image(media.images.thumbnail.url));
+	that.view.image.append(Fx.image(media.get('images').thumbnail.url));
 
 	spawn function() {
 		var waiter = new ClickWaiter(that.view.image);
