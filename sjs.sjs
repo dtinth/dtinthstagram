@@ -243,12 +243,14 @@ function EventEmitter() {
 var unimplemented = function() { throw new Error('Unimplemented!'); };
 
 function View(view) {
+
 	var that = {};
 	that.view = view;
-	that.list = {};
+
 	var rendered = false;
 	that.render = function() {
 	};
+
 	that.renderTo = function(el) {
 		if (!rendered) {
 			that.render();
@@ -257,7 +259,9 @@ function View(view) {
 		that.view.el.appendTo(el);
 		return that;
 	};
+
 	return that;
+
 }
 
 function ViewManager() {
