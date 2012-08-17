@@ -320,25 +320,6 @@ function FeedLoader(baseURL) {
 	return that;
 }
 
-function Comment(json) {
-	var that = {};
-	that.created = new Date(json.created_time * 1000);
-	that.text = json.text;
-	that.from = UserFactory.fromJSON(json.from);
-	that.id = json.id;
-	that.isMention = function() {
-		var mentions = that.text.match(/@\w+/g);
-		if (!mentions) return false;
-		for (var i = 0; i < mentions.length; i ++) {
-			if (mentions[i].toLowerCase() == '@' + me.get('username').toLowerCase()) {
-				return true;
-			}
-		}
-		return false;
-	};
-	return that;
-}
-
 function Collection() {
 	var that = new EventEmitter();
 	that.list = [];
@@ -439,7 +420,7 @@ var Media = Backbone.Model.extend({
 			comments.data.unshift(json.caption);
 		}
 		this.comments.merge(comments, function(c) {
-			return new Comment(c);
+			return Comment.fromJSON(c);
 		});
 	},
 
@@ -460,7 +441,7 @@ var Media = Backbone.Model.extend({
 	comment: function(text) {
 		var res = post(api_url(CORS_BASE + '/media/' + this.id + '/comments'), 'text=' + encodeURIComponent(text));
 		if (res.meta && res.meta.code == 200) {
-			this.comments.append(new Comment(res.data));
+			this.comments.append(Comment.fromJSON(res.data));
 		} else {
 			throw up(res);
 		}
@@ -494,6 +475,28 @@ var User = Backbone.Model.extend({
 	}
 
 });
+
+var Comment = Backbone.Model.extend({
+	isMention: function() {
+		var mentions = this.get('text').match(/@\w+/g);
+		if (!mentions) return false;
+		for (var i = 0; i < mentions.length; i ++) {
+			if (mentions[i].toLowerCase() == '@' + me.get('username').toLowerCase()) {
+				return true;
+			}
+		}
+		return false;
+	}
+});
+
+Comment.fromJSON = function(json) {
+	return new Comment({
+		created: new Date(json.created_time * 1000),
+		text:    json.text,
+		from:    UserFactory.fromJSON(json.from),
+		id:      json.id
+	});
+};
 
 function Factory(model) {
 	var that = {};
@@ -1053,7 +1056,7 @@ function CollectionView(collection) {
 			nextMap[c.id] = true;
 		}
 		var comparator = function(a, b) {
-			return a.item.created.getTime() - b.item.created.getTime();
+			return a.item.get('created').getTime() - b.item.get('created').getTime();
 		};
 		all.sort(comparator);
 		next.sort(comparator);
@@ -1212,10 +1215,10 @@ function MediaView(media) {
 		if (comment.isMention()) {
 			commentView.view.el.addClass('comment-mention');
 		}
-		commentView.view.user.html(user_html(comment.from));
-		commentView.view.text.text(comment.text);
+		commentView.view.user.html(user_html(comment.get('from')));
+		commentView.view.text.text(comment.get('text'));
 		commentView.view.text.html(emoji.convert(format(commentView.view.text.html())));
-		commentView.view.date.html(formatDate(comment.created));
+		commentView.view.date.html(formatDate(comment.get('created')));
 		return commentView;
 	};
 	function updateCommentCount() {
