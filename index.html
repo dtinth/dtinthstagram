@@ -14,7 +14,7 @@
 <div id="main-wrapper">
 	<div id="main">
 		<div id="head">
-			<h1>dtinthstagram</h1>
+			<h1>dtinthstagram<span id="version"> v0.1.0</span></h1>
 		</div>
 		<div id="loading-stuff" class="feed-header"><h2></h2></div>
 	</div>
@@ -169,6 +169,7 @@ var LoadingStuff = {
 	},
 	finish: function() {
 		$('#loading-stuff').hide();
+		$('#version').hide();
 	}
 };
 
