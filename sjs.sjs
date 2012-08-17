@@ -235,9 +235,9 @@ function View(dom) {
 	that.subviews = {};
 	that.parentView = null;
 	that.register = function(subview) {
-		if (that.parentView) that.parentView.unregister(that);
-		that.subviews[subview.id] = subview;
+		if (subview.parentView) subview.parentView.unregister(that);
 		subview.parentView = that;
+		that.subviews[subview.id] = subview;
 		return that;
 	};
 	that.unregister = function(subview) {
