@@ -330,7 +330,7 @@ function Comment(json) {
 		var mentions = that.text.match(/@\w+/g);
 		if (!mentions) return false;
 		for (var i = 0; i < mentions.length; i ++) {
-			if (mentions[i].toLowerCase() == '@' + me.username.toLowerCase()) {
+			if (mentions[i].toLowerCase() == '@' + me.get('username').toLowerCase()) {
 				return true;
 			}
 		}
@@ -478,21 +478,24 @@ var Media = Backbone.Model.extend({
 
 });
 
-function User(id) {
-	var that = {};
-	var data;
-	that.id = id;
-	that.load = function(json) {
-		data = json;
-		that.username = data.username;
-		that.fullName = data.full_name;
-		that.profilePicture = data.profile_picture;
-		return that;
-	};
-	return that;
-}
+var User = Backbone.Model.extend({
 
-function Factory() {
+	load: function(json) {
+		this.set(this.parse(json));
+		return this;
+	},
+
+	parse: function(json) {
+		return {
+			username: json.username,
+			fullName: json.fullName,
+			profilePicture: json.profile_picture
+		};
+	}
+
+});
+
+function Factory(model) {
 	var that = {};
 	that.map = {};
 	that.has = function(id) {
@@ -501,7 +504,7 @@ function Factory() {
 	};
 	that.get = function(id) {
 		var key = 'id_' + id;
-		return that.map[key] || (that.map[key] = that.create(id));
+		return that.map[key] || (that.map[key] = new model({ id: id }));
 	};
 	that.fromJSON = function(json) {
 		return that.get(json.id).load(json);
@@ -510,15 +513,8 @@ function Factory() {
 	return that;
 }
 
-var MediaFactory = new Factory();
-MediaFactory.create = function(id) {
-	return new Media({ id: id });
-};
-
-var UserFactory = new Factory();
-UserFactory.create = function(id) {
-	return new User(id);
-};
+var MediaFactory = new Factory(Media);
+var UserFactory = new Factory(User);
 
 function Feed() {
 	var that = new Collection();
@@ -1156,7 +1152,7 @@ function MediaView(media) {
 	// user
 
 	view.user.html(user_html(media.get('user')));
-	view.picture.append('<a href="' + user_url(media.get('user')) + '"><img src="' + media.get('user').profilePicture + '" alt=""></a>');
+	view.picture.append('<a href="' + user_url(media.get('user')) + '"><img src="' + media.get('user').get('profilePicture') + '" alt=""></a>');
 	view.date.html('<a href="' + media.get('link') + '">' + formatDate(media.get('created')) + '</a>');
 
 
@@ -1291,7 +1287,7 @@ function MediaView(media) {
 
 function UserInfoView(userInfo, user) {
 	var that = new View($('#user-info').tpl());
-	that.view.picture.append('<img src="' + user.profilePicture + '" alt="">');
+	that.view.picture.append('<img src="' + user.get('profilePicture') + '" alt="">');
 	return that;
 }
 
@@ -1308,10 +1304,12 @@ function formatDate(cdate) {
 }
 
 function user_url(user) {
-	return '?u=' + user.username;
+	return '?u=' + user.get('username');
 }
 function user_html(user) {
-	return '<a href="' + user_url(user) + '" class="username" data-username="' + user.username + '" data-uid="' + user.id + '">' + user.username + '</a>';
+	return '<a href="' + user_url(user) + '" class="username" data-username="'
+		+ user.get('username') + '" data-uid="' + user.id + '">'
+		+ user.get('username') + '</a>';
 }
 
 function authenticationNeeded() {
