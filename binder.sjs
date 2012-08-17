@@ -11,7 +11,6 @@ function binds(model, view) {
 	}
 	view.on('destroy', function() {
 		model.off('change', onchange);
-		console.log('view demolish damn');
 	});
 	return {
 		bind: function(attribute, callback) {

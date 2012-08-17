@@ -334,6 +334,7 @@ function View(dom) {
 	that.subviews = {};
 	that.parentView = null;
 	that.register = function(subview) {
+		// console.log(subview.id + ' register to ' + that.id)
 		if (subview.parentView) subview.parentView.unregister(that);
 		subview.parentView = that;
 		that.subviews[subview.id] = subview;
@@ -776,7 +777,7 @@ function FeedView(feed, navigation) {
 		return that.feed.getTitleBar();
 	};
 	that.add = function(view) {
-		that.register(view)
+		that.register(view);
 		view.renderTo(that.dom.contents);
 	};
 	that.fadeHeader = function() {
@@ -802,6 +803,7 @@ function FeedView(feed, navigation) {
 	function showUserInfo() {
 		userInfoView = new UserInfoView(that.feed.userInfo, that.feed.user);
 		userInfoView.renderTo(that.dom.userInfo);
+		that.register(userInfoView);
 		that.dom.userInfo.slideDown('slow');
 	}
 	that.dom.userInfo.hide();
@@ -1000,6 +1002,7 @@ function MediaListView(feed) {
 			var media = list[i];
 			var view = new MediaView(media);
 			view.renderTo(el);
+			that.register(view);
 		}
 		return el;
 	}
@@ -1063,6 +1066,7 @@ function MediaGridView(feed) {
 			var view = new GridItemView(list[i]).renderTo(el);
 			view.dom.el.attr('data-column', nextColumn);
 			nextColumn = (nextColumn + 1) % 4;
+			that.register(view);
 		}
 		return el;
 	}
@@ -1126,6 +1130,7 @@ function GridItemView(media) {
 		var mediaView = new MediaView(media);
 		mediaView.renderTo(that.dom.info);
 		that.dom.large.show();
+		that.register(mediaView);
 		mediaView.dom.leftSide.hide();
 		for (;;) {
 			that.dom.el.addClass('active');
