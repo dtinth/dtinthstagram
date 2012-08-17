@@ -1261,22 +1261,24 @@ function MediaView(media) {
 function binds(model, view) {
 	model.on('change', onchange)
 	var bindings = []
-	function bind(attribute, callback) {
-		bindings.push(function() {
-			if (model.hasChanged(attribute)) {
-				callback();
-			}
-		});
-		callback();
-		return this;
-	}
 	function onchange() {
 		for (var i = 0; i < bindings.length; i ++) {
 			bindings[i]()
 		}
 	}
 	return {
-		bind: bind,
+		bind: function(attribute, callback) {
+			callback();
+			return this.add(function() {
+				if (model.hasChanged(attribute)) {
+					callback();
+				}
+			});
+		},
+		add: function(fn) {
+			bindings.push(fn);
+			return this;
+		},
 		toggle: function(attribute, on, off) {
 			return this.bind(attribute, function() {
 				if (model.get(attribute)) on(); else off();
