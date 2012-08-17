@@ -27,11 +27,9 @@ function up(res) {
 	if (res.meta) return new Error(res.meta.code + ' ' + res.meta.error_type + ' ' + res.meta.error_message);
 	return new Error('cannot load: ' + res);
 }
-
 function api_url(endpoint) {
 	return endpoint + (~endpoint.indexOf('?') ? '&' : '?') + 'access_token=' + ACCESS_TOKEN;
 }
-
 function api(endpoint) {
 	return req(api_url(endpoint));
 }
@@ -403,19 +401,35 @@ function ResponseCollection() {
 	return that;
 }
 
-function Media(id) {
-	var that = new EventEmitter();
-	that.id = id;
-	that.likes = new ResponseCollection();
-	that.comments = new ResponseCollection();
-	that.load = function(json) {
-		var user = UserFactory.fromJSON(json.user);
-		that.user = user;
-		that.filter = json.filter;
-		that.likes.merge(json.likes, function(c) {
-			return UserFactory.fromJSON(c);
+var Media = Backbone.Model.extend({
+
+	initialize: function(attributes) {
+		this.likes = new ResponseCollection();
+		this.comments = new ResponseCollection();
+	},
+
+	load: function(json) {
+		this.likes.merge(json.likes, function() {
+			return UserFactory.fromJSON(json.user);
 		});
-		that.location = json.location;
+		this.mergeComments(json);
+		this.set(this.parse(json));
+		return this;
+	},
+
+	parse: function(json) {
+		return {
+			user:     UserFactory.fromJSON(json.user),
+			filter:   json.filter,
+			location: json.location,
+			created:  new Date(json.created_time * 1000),
+			link:     json.link,
+			images:   json.images,
+			liked:    !!json.user_has_liked
+		};
+	},
+
+	mergeComments: function(json) {
 		var comments = { count: 0, data: [] };
 		if (json.comments != null) {
 			comments.count = json.comments.count;
@@ -424,54 +438,45 @@ function Media(id) {
 		if (json.caption) {
 			comments.data.unshift(json.caption);
 		}
-		that.comments.merge(comments, function(c) {
+		this.comments.merge(comments, function(c) {
 			return new Comment(c);
 		});
-		that.created = new Date(json.created_time * 1000);
-		that.link    = json.link;
-		that.images  = json.images;
+	},
 
-		that.setLiked(!!json.user_has_liked);
-		return that;
-	};
-	that.setLiked = function(liked) {
-		if (liked != that.liked) {
-			that.liked = liked;
-			that.emit('likeChanged');
-		}
-	};
-	that.toggleLike = function() {
+	toggleLike: function() {
 		try {
-			that.emit('startLike');
-			var target = !that.liked;
-			var res = (target ? post : del)(api_url(CORS_BASE + '/media/' + that.id + '/likes/'));
+			this.trigger('startLike');
+			var target = !this.get('liked');
+			var res = (target ? post : del)(api_url(CORS_BASE + '/media/' + this.id + '/likes/'));
 			if (res.meta && res.meta.code == 200) {
-				that.setLiked(target);
+				this.set('liked', target);
 			}
 			return target;
 		} finally {
-			that.emit('finishLike');
+			this.trigger('finishLike');
 		}
-	};
-	that.comment = function(text) {
-		var res = post(api_url(CORS_BASE + '/media/' + that.id + '/comments'), 'text=' + encodeURIComponent(text));
+	},
+
+	comment: function(text) {
+		var res = post(api_url(CORS_BASE + '/media/' + this.id + '/comments'), 'text=' + encodeURIComponent(text));
 		if (res.meta && res.meta.code == 200) {
-			that.comments.append(new Comment(res.data));
+			this.comments.append(new Comment(res.data));
 		} else {
 			throw up(res);
 		}
-	};
-	that.reload = function() {
+	},
+
+	reload: function() {
 		try {
-			that.emit('startReload');
-			var media = api(API_BASE + '/media/' + that.id + '?now=' + new Date().getTime());
-			that.load(media.data);
+			this.trigger('startReload');
+			var media = api(API_BASE + '/media/' + this.id + '?now=' + new Date().getTime());
+			this.set(this.parse(media.data));
 		} finally {
-			that.emit('finishReload');
+			this.trigger('finishReload');
 		}
-	};
-	return that;
-}
+	}
+
+});
 
 function User(id) {
 	var that = {};
@@ -507,7 +512,7 @@ function Factory() {
 
 var MediaFactory = new Factory();
 MediaFactory.create = function(id) {
-	return new Media(id);
+	return new Media({ id: id });
 };
 
 var UserFactory = new Factory();
@@ -1150,21 +1155,21 @@ function MediaView(media) {
 
 	// user
 
-	view.user.html(user_html(media.user));
-	view.picture.append('<a href="' + user_url(media.user) + '"><img src="' + media.user.profilePicture + '" alt=""></a>');
-	view.date.html('<a href="' + media.link + '">' + formatDate(media.created) + '</a>');
+	view.user.html(user_html(media.get('user')));
+	view.picture.append('<a href="' + user_url(media.get('user')) + '"><img src="' + media.get('user').profilePicture + '" alt=""></a>');
+	view.date.html('<a href="' + media.get('link') + '">' + formatDate(media.get('created')) + '</a>');
 
 
 	// image
 	
-	var lowResImage = Fx.image(media.images.low_resolution.url).appendTo(view.image);
+	var lowResImage = Fx.image(media.get('images').low_resolution.url).appendTo(view.image);
 
 	view.image.click(function() {
 		view.el.toggleClass('zoomed');
 	});
 
-	if (media.filter != 'Normal') {
-		view.effectsName.text(media.filter);
+	if (media.get('filter') != 'Normal') {
+		view.effectsName.text(media.get('filter'));
 	} else {
 		view.effectsIcon.hide();
 	}
@@ -1180,10 +1185,11 @@ function MediaView(media) {
 
 	// geotag
 	
-	if (media.location) {
-		var place = media.location.latitude + ', ' + media.location.longitude;
+	var location = media.get('location');
+	if (location) {
+		var place = location.latitude + ', ' + location.longitude;
 		var placeName = place;
-		if (media.location.name) placeName = media.location.name;
+		if (location.name) placeName = location.name;
 		view.geo.html('<a href="http://maps.google.com/?q=' + encodeURIComponent(place) + '">' + placeName + '</a>');
 	} else {
 		view.geoContainer.hide();
