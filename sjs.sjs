@@ -1239,14 +1239,13 @@ function MediaView(media) {
 	media.likes.on('change', showLikes);
 
 	function updateLike() {
-		dom.likeIcon.data('icon').attr('fill', media.liked ? '#ffff99' : '#8b8685');
+		dom.likeIcon.data('icon').attr('fill', media.get('liked') ? '#ffff99' : '#8b8685');
 	}
-	media.on('likeChanged', updateLike);
-	updateLike();
 
 	binds(media, that)
 		.toggleClass('liking', dom.likeIcon, 'dim')
 		.toggleClass('reloading', dom.right, 'dim')
+		.bind('liked', updateLike)
 
 	dom.likeIcon.click(function() {
 		var target = media.toggleLike();
