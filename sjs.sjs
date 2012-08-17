@@ -995,7 +995,7 @@ function GridItemView(media) {
 
 }
 
-function CollectionView(collection) {
+function CollectionView(collection, factory) {
 	var that = new View($('#collection').tpl());
 	var display = [];
 	var animationEnabled = false;
@@ -1041,7 +1041,7 @@ function CollectionView(collection) {
 				}
 			} else if (!prevMap[c.id]) {
 				c.el = $('<div class="collectionview-item"></div>');
-				c.view = that.createView(c.item);
+				c.view = factory(c.item);
 				c.view.renderTo(c.el);
 				that.dom.el.append(c.el);
 				if (animationEnabled) {
@@ -1178,8 +1178,8 @@ function MediaView(media) {
 		});
 	}
 
-	var commentsView = new CollectionView(media.comments);
-	commentsView.createView = function(comment) {
+	var commentsView = new CollectionView(media.comments, createCommentView);
+	function createCommentView(comment) {
 		var commentView = new View($('#comment').tpl());
 		if (comment.isMention()) {
 			commentView.dom.el.addClass('comment-mention');
