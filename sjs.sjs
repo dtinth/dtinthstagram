@@ -776,13 +776,13 @@ function FeedView(feed) {
 				activeView = views[currentMode] = modes[currentMode]();
 				that.add(activeView);
 			} else {
-				activeView.view.el.show();
+				activeView.dom.el.show();
 			}
 			activeView.active = true;
 			that.calculatePositionTable();
 			waiter.wait();
 			activeView.active = false;
-			activeView.view.el.hide();
+			activeView.dom.el.hide();
 			currentMode = (currentMode + 1) % modes.length;
 		}
 	}();
@@ -913,7 +913,7 @@ function MediaGridView(feed) {
 		var el = $('<div class="changeset"></div>');
 		for (var i = 0; i < list.length; i ++) {
 			var view = new GridItemView(list[i]).renderTo(el);
-			view.view.el.attr('data-column', nextColumn);
+			view.dom.el.attr('data-column', nextColumn);
 			nextColumn = (nextColumn + 1) % 4;
 		}
 		return el;
@@ -978,13 +978,13 @@ function GridItemView(media) {
 		var mediaView = new MediaView(media);
 		mediaView.renderTo(that.dom.info);
 		that.dom.large.show();
-		mediaView.view.leftSide.hide();
+		mediaView.dom.leftSide.hide();
 		for (;;) {
 			that.dom.el.addClass('active');
-			mediaView.view.leftSide.fadeIn();
+			mediaView.dom.leftSide.fadeIn();
 			Fx.slideDown(that.dom.large[0], 500);
 			waiter.wait();
-			mediaView.view.leftSide.fadeOut();
+			mediaView.dom.leftSide.fadeOut();
 			that.dom.el.removeClass('active');
 			Fx.slideUp(that.dom.large[0], 500);
 			waiter.wait();
