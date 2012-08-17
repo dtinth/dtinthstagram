@@ -196,7 +196,7 @@ function main() {
 		}
 	}
 	function setUnseen(count) {
-		var titleBase = manager.activeView.getTitleBar() + '@' + me.username + ' - ' + APP_NAME;
+		var titleBase = manager.activeView.getTitleBar() + '@' + me.get('username') + ' - ' + APP_NAME;
 		if (count == 0) {
 			setDockBadge('');
 			document.title = titleBase;
@@ -390,8 +390,8 @@ var Media = Backbone.Model.extend({
 	},
 
 	load: function(json) {
-		this.likes.merge(json.likes, function() {
-			return UserFactory.fromJSON(json.user);
+		this.likes.merge(json.likes, function(c) {
+			return UserFactory.fromJSON(c);
 		});
 		this.mergeComments(json);
 		this.set(this.parse(json));
@@ -1264,6 +1264,7 @@ function MediaView(media) {
 		view.likes.html(html);
 		view.likeCount.text(media.likes.count);
 	}
+
 	showLikes();
 	view.el.iconify();
 	media.likes.on('change', showLikes);
