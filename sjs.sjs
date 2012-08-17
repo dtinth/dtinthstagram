@@ -583,7 +583,7 @@ var Media = Backbone.Model.extend({
 		try {
 			this.set('reloading', true);
 			var media = api(API_BASE + '/media/' + this.id + '?now=' + new Date().getTime());
-			this.set(this.parse(media.data));
+			this.load(media.data);
 		} finally {
 			this.set('reloading', false);
 		}
