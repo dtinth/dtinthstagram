@@ -205,7 +205,7 @@ function StateManager(onstate) {
 
 function main() {
 
-	$('#version').html(' v0.1.2')
+	$('#version').html(' v0.1.3')
 
 	if (!ACCESS_TOKEN) {
 		return authenticationNeeded();
@@ -915,18 +915,22 @@ function FeedView(feed, navigation) {
 		}
 		return 0;
 	};
-
-	function scrollPic(direction) {
-		view.calculatePositionTable();
-		if (posTable.length == 0) return;
-		var cscroll = scroll.get();
+	function getCurrentScrollIndex() {
 		var index = 0;
+		var cscroll = scroll.get();
+		that.calculatePositionTable();
 		for (var i = 0; i < posTable.length; i ++) {
 			if (posTable[i] >= cscroll) {
 				index = i;
 				break;
 			}
 		}
+		return index;
+	}
+	function scrollPic(direction) {
+		if (posTable.length == 0) return;
+		var cscroll = scroll.get();
+		var index = getCurrentScrollIndex();
 		var target = index;
 		for (i = index; i >= 0 && i < posTable.length; i += direction) {
 			if (posTable[i] != posTable[target]) {
@@ -945,6 +949,12 @@ function FeedView(feed, navigation) {
 		}
 		if (e.keyCode == 75) {
 			scrollPic(-1);
+		}
+		if (e.keyCode == 76) {
+			var index = getCurrentScrollIndex();
+			if (activeView.like) {
+				activeView.like(index);
+			}
 		}
 	});
 
@@ -1025,6 +1035,9 @@ function MediaListView(feed) {
 
 	var that = new MediaCollectionView($('#list-view').tpl(), feed);
 
+	that.like = function(index) {
+		that.getItemElements().eq(index).closest('.picture').find('[data-role="likeIcon"]').eq(0).click();
+	};
 	that.getItemElements = function() {
 		return that.dom.el.find('.image');
 	};
