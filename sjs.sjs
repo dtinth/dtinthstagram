@@ -5,6 +5,7 @@ var CLIENT_ID = '99fd011a2cad4223a3b2bc48b4d2ab17';
 var API_BASE = 'https://api.instagram.com/v1';
 var CORS_BASE = 'https://corstagram.appspot.com/v1';
 
+var scroll = require('./scroll');
 var Fx = require('./fx').Fx;
 var binds = require('./binder').binds;
 
@@ -203,6 +204,8 @@ function StateManager(onstate) {
 }
 
 function main() {
+
+	$('#version').html(' v0.1.2')
 
 	if (!ACCESS_TOKEN) {
 		return authenticationNeeded();
@@ -847,7 +850,7 @@ function FeedView(feed, navigation) {
 					} else {
 						scrollWaiter.wait();
 					}
-					if (that.active && count < 3 && window.scrollY + window.innerHeight > document.body.offsetHeight - 150) {
+					if (that.active && count < 3 && scroll.get() + window.innerHeight > document.body.offsetHeight - 150) {
 						count ++;
 						break;
 					}
@@ -897,10 +900,11 @@ function FeedView(feed, navigation) {
 	that.getUnseen = function() {
 		var min = 0, max = posTable.length - 1;
 		var l = min, r = max;
+		var cscroll = scroll.get();
 		while (l <= r) {
 			var m = Math.floor((l + r) / 2);
-			if (posTable[m] < window.scrollY) {
-				if (m + 1 > max || window.scrollY <= posTable[m + 1]) {
+			if (posTable[m] < cscroll) {
+				if (m + 1 > max || cscroll <= posTable[m + 1]) {
 					return m + 1;
 				} else {
 					l = m + 1;
@@ -912,6 +916,36 @@ function FeedView(feed, navigation) {
 		return 0;
 	};
 
+	function scrollPic(direction) {
+		if (posTable.length == 0) return;
+		var cscroll = scroll.get();
+		var index = 0;
+		for (var i = 0; i < posTable.length; i ++) {
+			if (posTable[i] >= cscroll) {
+				index = i;
+				break;
+			}
+		}
+		var target = index;
+		for (i = index; i >= 0 && i < posTable.length; i += direction) {
+			if (posTable[i] != posTable[target]) {
+				target = i;
+				break;
+			}
+		}
+		scroll.animateBy(posTable[target] - cscroll - 30)
+	}
+	$(document).on('keydown', function(e) {
+		if (document.activeElement && document.activeElement.nodeName == 'TEXTAREA') {
+			return;
+		}
+		if (e.keyCode == 74) {
+			scrollPic(1);
+		}
+		if (e.keyCode == 75) {
+			scrollPic(-1);
+		}
+	});
 
 	// view switching
 	
@@ -1097,7 +1131,7 @@ function MediaGridView(feed) {
 						el.addClass('marker');
 						for (;;) {
 							hold(1000);
-							if (window.scrollY < el.offset().top - 150) {
+							if (scroll.get() < el.offset().top - 150) {
 								break;
 							}
 						}
