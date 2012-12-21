@@ -917,6 +917,7 @@ function FeedView(feed, navigation) {
 	};
 
 	function scrollPic(direction) {
+		view.calculatePositionTable();
 		if (posTable.length == 0) return;
 		var cscroll = scroll.get();
 		var index = 0;
